@@ -19,6 +19,8 @@ class BaseAST {
   virtual ~BaseAST() = default;
 
   virtual void Dump() const = 0;
+
+  virtual void Output() const = 0;
 };
 
 class CompUnitAST : public BaseAST {
@@ -29,6 +31,10 @@ class CompUnitAST : public BaseAST {
     std::cout << "CompUnitAST { ";
     func_def->Dump();
     std::cout << " }";
+  }
+
+  void Output() const override {
+    func_def->Output();
   }
 };
 
@@ -45,6 +51,13 @@ class FuncDefAST : public BaseAST {
     block->Dump();
     std::cout << " }";
   }
+
+  void Output() const override {
+    std::cout << "fun ";
+    std::cout << "@" << ident << "(): ";
+    func_type->Output();
+    block->Output();
+  }
 };
 
 class FuncTypeAST: public BaseAST {
@@ -52,10 +65,14 @@ class FuncTypeAST: public BaseAST {
     std::string type;
     
     void Dump() const override {
-    std::cout << "FuncTypeAST { ";
-    std::cout << type;
-    std::cout << " }";
-  }
+      std::cout << "FuncTypeAST { ";
+      std::cout << type;
+      std::cout << " }";
+    }
+
+    void Output() const override {
+      std::cout << "i32" << " ";
+    }
 };
 
 class BlockAST: public BaseAST {
@@ -66,6 +83,13 @@ class BlockAST: public BaseAST {
       std::cout << "BlockAST { ";
       stmt->Dump();
       std::cout << " }";
+    }
+
+    void Output() const override {
+      std::cout << "{\n";
+      std::cout << "\%entry:\n";
+      stmt->Output();
+      std::cout << "}";
     }
 };
 
@@ -79,5 +103,9 @@ class StmtAST: public BaseAST {
       // number->Dump();
       std::cout << number;
       std::cout << " }";
+    }
+
+    void Output() const override {
+      std::cout << "  ret " << number << "\n";
     }
 };
