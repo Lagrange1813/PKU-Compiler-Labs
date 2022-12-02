@@ -9,6 +9,8 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <cstring>
+
 #include "ast.h"
 
 // 声明 lexer 函数和错误处理函数
@@ -118,6 +120,19 @@ Number
 
 // 定义错误处理函数, 其中第二个参数是错误信息
 // parser 如果发生错误 (例如输入的程序出现了语法错误), 就会调用这个函数
+
+// 打印错误信息
 void yyerror(unique_ptr<BaseAST> &ast, const char *s) {
-  cerr << "error: " << s << endl;
+  extern int yylineno;
+  extern char *yytext;
+
+  int len = strlen(yytext);
+  int i;
+  char buf[512] = {0};
+
+  for (i=0;i<len;++i){
+    sprintf(buf,"%s%d ",buf,yytext[i]);
+  }
+
+  fprintf(stderr, "ERROR: %s at symbol '%s' on line %d\n", s, buf, yylineno);
 }
