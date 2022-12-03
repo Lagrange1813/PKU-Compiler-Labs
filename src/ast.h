@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <iostream>
+#include "koopa.h"
 
 // CompUnit  ::= FuncDef;
 
@@ -12,6 +13,8 @@
 // Number    ::= INT_CONST;
 
 // CompUnitAST { FuncDefAST { FuncTypeAST { int }, main, BlockAST { StmtAST { 0 } } } }
+
+string str;
 
 // 所有 AST 的基类
 class BaseAST {
