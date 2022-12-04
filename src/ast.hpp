@@ -8,51 +8,56 @@ extern int cnt;
 
 // 所有 AST 的基类
 class BaseAST {
- public:
-  virtual ~BaseAST() = default;
+  public:
+    bool ret = false;
 
-  virtual void Dump() const = 0;
+    virtual ~BaseAST() = default;
 
-  virtual void Output() const = 0;
+    virtual void Dump() const = 0;
+
+    virtual std::pair<bool, int> Output() const = 0;
 };
 
 class CompUnitAST : public BaseAST {
- public:
-  std::unique_ptr<BaseAST> func_def;
+  public:
+    std::unique_ptr<BaseAST> func_def;
 
-  void Dump() const override {
-    std::cout << "CompUnitAST { ";
-    func_def->Dump();
+    void Dump() const override {
+        std::cout << "CompUnitAST { ";
+        func_def->Dump();
     std::cout << " }";
   }
 
-  void Output() const override {
+    std::pair<bool, int> Output() const override {
     func_def->Output();
+    return std::pair<bool, int>(false, 0);
   }
 };
 
 class FuncDefAST : public BaseAST {
- public:
-  std::unique_ptr<BaseAST> func_type;
-  std::string ident;
-  std::unique_ptr<BaseAST> block;
+  public:
+    std::unique_ptr<BaseAST> func_type;
+    std::string ident;
+    std::unique_ptr<BaseAST> block;
 
-  void Dump() const override {
-    std::cout << "FuncDefAST { ";
-    func_type->Dump();
-    std::cout << ", " << ident << ", ";
-    block->Dump();
-    std::cout << " }";
-  }
+    void Dump() const override {
+      std::cout << "FuncDefAST { ";
+      func_type->Dump();
+      std::cout << ", " << ident << ", ";
+      block->Dump();
+      std::cout << " }";
+    }
 
-  void Output() const override {
-    str += "fun ";
-    str += "@";
-    str += ident;
-    str += "(): ";
-    func_type->Output();
-    block->Output();
-  }
+    std::pair<bool, int> Output() const override {
+      str += "fun ";
+      str += "@";
+      str += ident;
+      str += "(): ";
+      func_type->Output();
+      block->Output();
+
+      return std::pair<bool, int>(false, 0);
+    }
 };
 
 class FuncTypeAST: public BaseAST {
@@ -65,11 +70,13 @@ class FuncTypeAST: public BaseAST {
       std::cout << " }";
     }
 
-    void Output() const override {
+    std::pair<bool, int> Output() const override {
       if (type == "int") {
         str += "i32";
         str += " ";
       }
+
+      return std::pair<bool, int>(false, 0);
     }
 };
 
@@ -83,11 +90,13 @@ class BlockAST: public BaseAST {
       std::cout << " }";
     }
 
-    void Output() const override {
+    std::pair<bool, int> Output() const override {
       str += "{\n";
       str += "\%entry:\n";
       stmt->Output();
       str += "}";
+
+      return std::pair<bool, int>(false, 0);
     }
 };
 
@@ -101,11 +110,15 @@ class StmtAST: public BaseAST {
       std::cout << " }";
     }
 
-    void Output() const override {
+    std::pair<bool, int> Output() const override {
+      exp->ret = true;
+
       exp->Output();
       str += "  ret %";
       str += std::to_string(cnt - 1);
       str += "\n";
+
+      return std::pair<bool, int>(false, 0);
     }
 };
 
@@ -119,8 +132,12 @@ class ExpAST: public BaseAST {
       std::cout << " }";
     }
 
-    void Output() const override {
+    std::pair<bool, int> Output() const override {
+      unaryExp->ret = this->ret;
+
       unaryExp->Output();
+
+      return std::pair<bool, int>(false, 0);
     }
 };
 
@@ -134,8 +151,10 @@ class PrimaryExpWithBrAST: public BaseAST {
       std::cout << " }";
     }
 
-    void Output() const override {
+    std::pair<bool, int> Output() const override {
       exp->Output();
+
+      return std::pair<bool, int>(false, 0);
     }
 };
 
@@ -149,8 +168,8 @@ class PrimaryExpWithNumAST: public BaseAST {
       std::cout << " }";
     }
 
-    void Output() const override {
-      str += std::to_string(number);
+    std::pair<bool, int> Output() const override {
+      return std::pair<bool, int>(true, number);
     }
 };
 
@@ -164,8 +183,10 @@ class UnaryExpAST: public BaseAST {
       std::cout << " }";
     }
 
-    void Output() const override {
+    std::pair<bool, int> Output() const override {
       primaryExp->Output();
+
+      return std::pair<bool, int>(false, 0);
     }
 };
 
@@ -179,8 +200,8 @@ class UnaryOpPlusAST: public BaseAST {
       std::cout << " }";
     }
 
-    void Output() const override {
-    
+    std::pair<bool, int> Output() const override {
+      return std::pair<bool, int>(false, 0);
     }
 };
 
@@ -194,8 +215,10 @@ class UnaryOpMinusAST: public BaseAST {
       std::cout << " }";
     }
 
-    void Output() const override {
+    std::pair<bool, int> Output() const override {
       str += "  %1 = sub 0, %0\n";
+
+      return std::pair<bool, int>(false, 0);
     }
 };
 
@@ -209,8 +232,10 @@ class UnaryOpNotAST: public BaseAST {
       std::cout << " }";
     }
 
-    void Output() const override {
+    std::pair<bool, int> Output() const override {
       str += "  %0 = eq 6, 0\n";
+
+      return std::pair<bool, int>(false, 0);
     }
 };
 
@@ -226,8 +251,10 @@ class UnaryExpWithOpAST: public BaseAST {
       std::cout << " }";
     }
 
-    void Output() const override {
+    std::pair<bool, int> Output() const override {
       unaryOp->Output();
       unaryExp->Output();
+
+      return std::pair<bool, int>(false, 0);
     }
 };
