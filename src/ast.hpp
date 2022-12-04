@@ -3,18 +3,8 @@
 #include <iostream>
 #include "koopa.h"
 
-// CompUnit  ::= FuncDef;
-
-// FuncDef   ::= FuncType IDENT "(" ")" Block;
-// FuncType  ::= "int";
-
-// Block     ::= "{" Stmt "}";
-// Stmt      ::= "return" Number ";";
-// Number    ::= INT_CONST;
-
-// CompUnitAST { FuncDefAST { FuncTypeAST { int }, main, BlockAST { StmtAST { 0 } } } }
-
 extern std::string str;
+extern int cnt;
 
 // 所有 AST 的基类
 class BaseAST {
@@ -76,8 +66,10 @@ class FuncTypeAST: public BaseAST {
     }
 
     void Output() const override {
-      str += "i32";
-      str += " ";
+      if (type == "int") {
+        str += "i32";
+        str += " ";
+      }
     }
 };
 
@@ -101,19 +93,141 @@ class BlockAST: public BaseAST {
 
 class StmtAST: public BaseAST {
   public:
-    // std::unique_ptr<BaseAST> number;
-    int number;
+    std::unique_ptr<BaseAST> exp;
 
     void Dump() const override {
       std::cout << "StmtAST { ";
-      // number->Dump();
+      exp->Dump();
+      std::cout << " }";
+    }
+
+    void Output() const override {
+      exp->Output();
+      str += "  ret %";
+      str += std::to_string(cnt - 1);
+      str += "\n";
+    }
+};
+
+class ExpAST: public BaseAST {
+  public:
+    std::unique_ptr<BaseAST> unaryExp;
+
+    void Dump() const override {
+      std::cout << "ExpAST { ";
+      unaryExp->Dump();
+      std::cout << " }";
+    }
+
+    void Output() const override {
+      unaryExp->Output();
+    }
+};
+
+class PrimaryExpWithBrAST: public BaseAST {
+  public:
+    std::unique_ptr<BaseAST> exp;
+    
+    void Dump() const override {
+      std::cout << "PrimaryExpWithBrAST { ";
+      exp->Dump();
+      std::cout << " }";
+    }
+
+    void Output() const override {
+      exp->Output();
+    }
+};
+
+class PrimaryExpWithNumAST: public BaseAST {
+  public:
+    int number; 
+
+    void Dump() const override {
+      std::cout << "PrimaryExpWithNumAST { ";
       std::cout << number;
       std::cout << " }";
     }
 
     void Output() const override {
-      str += "  ret ";
-      str += std::to_string(number); 
-      str += "\n";
+      str += std::to_string(number);
+    }
+};
+
+class UnaryExpAST: public BaseAST {
+  public:
+    std::unique_ptr<BaseAST> primaryExp;
+
+    void Dump() const override {
+      std::cout << "UnaryExpAST { ";
+      primaryExp->Dump();
+      std::cout << " }";
+    }
+
+    void Output() const override {
+      primaryExp->Output();
+    }
+};
+
+class UnaryOpPlusAST: public BaseAST {
+  public:
+    char op;
+
+    void Dump() const override {
+      std::cout << "UnaryOpPlusAST { ";
+      std::cout << op;
+      std::cout << " }";
+    }
+
+    void Output() const override {
+    
+    }
+};
+
+class UnaryOpMinusAST: public BaseAST {
+  public:
+    char op;
+
+    void Dump() const override {
+      std::cout << "UnaryOpMinusAST { ";
+      std::cout << op;
+      std::cout << " }";
+    }
+
+    void Output() const override {
+      str += "  %1 = sub 0, %0\n";
+    }
+};
+
+class UnaryOpNotAST: public BaseAST {
+  public:
+    char op;
+
+    void Dump() const override {
+      std::cout << "UnaryOpNotAST { ";
+      std::cout << op;
+      std::cout << " }";
+    }
+
+    void Output() const override {
+      str += "  %0 = eq 6, 0\n";
+    }
+};
+
+class UnaryExpWithOpAST: public BaseAST {
+  public:
+    std::unique_ptr<BaseAST> unaryOp;
+    std::unique_ptr<BaseAST> unaryExp;
+
+    void Dump() const override {
+      std::cout << "UnaryExpWithOpAST { ";
+      unaryOp->Dump();
+      unaryExp->Dump();
+      std::cout << " }";
+    }
+
+    void Output() const override {
+      unaryOp->Output();
+      unaryExp->Output();
     }
 };

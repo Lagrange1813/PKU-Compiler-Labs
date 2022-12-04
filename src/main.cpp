@@ -13,6 +13,7 @@
 using namespace std;
 
 string str;
+int cnt;
 
 // 声明 lexer 的输入, 以及 parser 函数
 // 为什么不引用 sysy.tab.hpp 呢? 因为首先里面没有 yyin 的定义
@@ -39,15 +40,29 @@ int main(int argc, const char *argv[]) {
   auto ret = yyparse(ast);
   assert(!ret);
 
-  freopen(output,"w",stdout);
-  ast->Output();
+  if (!strcmp(mode, "-ast")) {
 
-  if (!strcmp(mode, "-koopa")) {
+    freopen(output,"w",stdout);
+    ast->Dump();
+
+    cout << endl;
+
+    fclose(stdout);
+
+  } else if (!strcmp(mode, "-koopa")) {
+
+    freopen(output,"w",stdout);
+    ast->Output();
 
     cout << str;
     cout << endl;
 
+    fclose(stdout);
+
   } else if (!strcmp(mode, "-riscv")) {
+
+    freopen(output,"w",stdout);
+    ast->Output();
 
     char ir_string[str.length()];
     strcpy(ir_string, str.c_str());
@@ -69,9 +84,10 @@ int main(int argc, const char *argv[]) {
     // 注意, raw program 中所有的指针指向的内存均为 raw program builder 的内存
     // 所以不要在 raw program 处理完毕之前释放 builder
     koopa_delete_raw_program_builder(builder);
-  }
 
-  fclose(stdout);
+    fclose(stdout);
+
+  }
 
   return 0;
 }
