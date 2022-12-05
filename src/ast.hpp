@@ -114,7 +114,6 @@ class StmtAST: public BaseAST {
       exp->ret = true;
 
       std::pair<bool, int> result = exp->Output();
-      std::cout << result.first << result.second << std::endl;
 
       if (result.first) {
         str += "  ret ";
@@ -247,21 +246,3 @@ class UnaryExpWithOpAST: public BaseAST {
       return std::pair<bool, int>(false, 0);
     }
 };
-
-// void Generate(int num) {
-//       if (op == '!') {
-//         str += "  %";
-//         str += std::to_string(cnt);
-//         str += " = eq ";
-//         str += std::to_string(num);
-//         str += ", 0\n";
-//         cnt++;
-//       } else if (op == '-') {
-//         str += "  %";
-//         str += std::to_string(cnt);
-//         str += " = sub 0, ";
-//         str += std::to_string(num);
-//         str += "\n";
-//         cnt++;
-//       }
-//     }
