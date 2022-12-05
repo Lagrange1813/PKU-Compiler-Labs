@@ -1,9 +1,9 @@
 #include <cassert>
 #include <cstdio>
+#include <cstring>
 #include <iostream>
 #include <memory>
 #include <string>
-#include <cstring>
 
 // std::string str;
 
@@ -20,10 +20,10 @@ int cnt;
 // 其次, 因为这个文件不是我们自己写的, 而是被 Bison 生成出来的
 // 你的代码编辑器/IDE 很可能找不到这个文件, 然后会给你报错 (虽然编译不会出错)
 // 看起来会很烦人, 于是干脆采用这种看起来 dirty 但实际很有效的手段
-extern FILE *yyin;
-extern int yyparse(unique_ptr<BaseAST> &ast);
+extern FILE* yyin;
+extern int yyparse(unique_ptr<BaseAST>& ast);
 
-int main(int argc, const char *argv[]) {
+int main(int argc, const char* argv[]) {
   // 解析命令行参数. 测试脚本/评测平台要求你的编译器能接收如下参数:
   // compiler 模式 输入文件 -o 输出文件
   assert(argc == 5);
@@ -41,8 +41,7 @@ int main(int argc, const char *argv[]) {
   assert(!ret);
 
   if (!strcmp(mode, "-ast")) {
-
-    freopen(output,"w",stdout);
+    freopen(output, "w", stdout);
     ast->Dump();
 
     cout << endl;
@@ -50,8 +49,7 @@ int main(int argc, const char *argv[]) {
     fclose(stdout);
 
   } else if (!strcmp(mode, "-koopa")) {
-
-    freopen(output,"w",stdout);
+    freopen(output, "w", stdout);
     ast->Output();
 
     cout << str;
@@ -60,8 +58,7 @@ int main(int argc, const char *argv[]) {
     fclose(stdout);
 
   } else if (!strcmp(mode, "-riscv")) {
-
-    freopen(output,"w",stdout);
+    freopen(output, "w", stdout);
     ast->Output();
 
     char ir_string[str.length()];
@@ -70,7 +67,7 @@ int main(int argc, const char *argv[]) {
     // 解析字符串 str, 得到 Koopa IR 程序
     koopa_program_t program;
     koopa_error_code_t koopa_ret = koopa_parse_from_string(ir_string, &program);
-    assert(koopa_ret == KOOPA_EC_SUCCESS); // 确保解析时没有出错
+    assert(koopa_ret == KOOPA_EC_SUCCESS);  // 确保解析时没有出错
     // 创建一个 raw program builder, 用来构建 raw program
     koopa_raw_program_builder_t builder = koopa_new_raw_program_builder();
     // 将 Koopa IR 程序转换为 raw program
@@ -86,7 +83,6 @@ int main(int argc, const char *argv[]) {
     koopa_delete_raw_program_builder(builder);
 
     fclose(stdout);
-
   }
 
   return 0;

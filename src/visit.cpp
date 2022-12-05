@@ -7,7 +7,7 @@ using namespace std;
 int asm_cnt = 0;
 
 // 访问 raw program
-void Visit(const koopa_raw_program_t &program) {
+void Visit(const koopa_raw_program_t& program) {
   // 执行一些其他的必要操作
   // ...
   // 访问所有全局变量
@@ -17,7 +17,7 @@ void Visit(const koopa_raw_program_t &program) {
 }
 
 // 访问 raw slice
-void Visit(const koopa_raw_slice_t &slice) {
+void Visit(const koopa_raw_slice_t& slice) {
   for (size_t i = 0; i < slice.len; ++i) {
     auto ptr = slice.buffer[i];
     // 根据 slice 的 kind 决定将 ptr 视作何种元素
@@ -42,7 +42,7 @@ void Visit(const koopa_raw_slice_t &slice) {
 }
 
 // 访问函数
-void Visit(const koopa_raw_function_t &func) {
+void Visit(const koopa_raw_function_t& func) {
   // 执行一些其他的必要操作
   cout << "  .text\n";
   cout << "  .globl " << func->name + 1 << "\n";
@@ -52,7 +52,7 @@ void Visit(const koopa_raw_function_t &func) {
 }
 
 // 访问基本块
-void Visit(const koopa_raw_basic_block_t &bb) {
+void Visit(const koopa_raw_basic_block_t& bb) {
   // 执行一些其他的必要操作
   // cout << bb->name << "\n";
   // 访问所有指令
@@ -60,9 +60,9 @@ void Visit(const koopa_raw_basic_block_t &bb) {
 }
 
 // 访问指令
-void Visit(const koopa_raw_value_t &value) {
+void Visit(const koopa_raw_value_t& value) {
   // 根据指令类型判断后续需要如何访问
-  const auto &kind = value->kind;
+  const auto& kind = value->kind;
   switch (kind.tag) {
     case KOOPA_RVT_RETURN:
       // 访问 return 指令
@@ -82,46 +82,51 @@ void Visit(const koopa_raw_value_t &value) {
   }
 }
 
-void Visit(const koopa_raw_return_t &ret) {
+void Visit(const koopa_raw_return_t& ret) {
   // assert(ret.value->kind.tag == KOOPA_RVT_INTEGER);
   if (asm_cnt == 0) {
     cout << "  li a0, ";
     Visit(ret.value->kind.data.integer);
     cout << "\n";
   } else {
-    cout << "  mv    a0, " << "t" << asm_cnt - 1 << "\n";
+    cout << "  mv    a0, "
+         << "t" << asm_cnt - 1 << "\n";
   }
-  cout<< "  ret" << "\n";
+  cout << "  ret"
+       << "\n";
 }
 
-void Visit(const koopa_raw_integer_t &integer) {
-  cout<< integer.value;
+void Visit(const koopa_raw_integer_t& integer) {
+  cout << integer.value;
 }
 
-void Visit(const koopa_raw_binary_t &binary) {
+void Visit(const koopa_raw_binary_t& binary) {
   switch (binary.op) {
-  case 1:
+    case 1:
 
-    // 1
-    cout << "  li    " << "t" << asm_cnt << ", ";
-    Visit(binary.lhs);
-    cout << "\n";
-    // 2
-    cout << "  xor   " << "t" << asm_cnt << ", t" << asm_cnt << ", x0\n";
-    // 3
-    cout << "  seqz  " << "t" << asm_cnt << ", t" << asm_cnt << "\n";
+      // 1
+      cout << "  li    "
+           << "t" << asm_cnt << ", ";
+      Visit(binary.lhs);
+      cout << "\n";
+      // 2
+      cout << "  xor   "
+           << "t" << asm_cnt << ", t" << asm_cnt << ", x0\n";
+      // 3
+      cout << "  seqz  "
+           << "t" << asm_cnt << ", t" << asm_cnt << "\n";
 
-    asm_cnt++;
+      asm_cnt++;
 
-    break;
+      break;
 
-  case 7:
+    case 7:
 
-    cout << "  sub   t" << asm_cnt << ", x0, t" << asm_cnt - 1 << "\n";
+      cout << "  sub   t" << asm_cnt << ", x0, t" << asm_cnt - 1 << "\n";
 
-    asm_cnt++;
+      asm_cnt++;
 
-  default:
-    break;
+    default:
+      break;
   }
 }
