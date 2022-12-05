@@ -40,13 +40,12 @@ using namespace std;
 // lexer 返回的所有 token 种类的声明
 // 注意 IDENT 和 INT_CONST 会返回 token 的值, 分别对应 str_val 和 int_val
 %token INT RETURN
-%token <str_val> IDENT OPERATOR
+%token <str_val> IDENT
 %token <int_val> INT_CONST
 
 // 非终结符的类型定义
 %type <ast_val> FuncDef FuncType Block Stmt Exp PrimaryExp UnaryExp MulExp AddExp
 %type <int_val> Number
-%type <str_val> UnaryOp
 
 %%
 
@@ -142,18 +141,25 @@ UnaryExp
     ast->primaryExp = unique_ptr<BaseAST>($1);
     $$ = ast;
   }
-  | UnaryOp UnaryExp {
+  | '!' UnaryExp {
     auto ast = new UnaryExpWithOpAST();
-    ast->unaryOp = *unique_ptr<string>($1);
+    ast->unaryOp = '!';
+    ast->unaryExp = unique_ptr<BaseAST>($2);
+    $$ = ast;
+  }
+  | '+' UnaryExp {
+    auto ast = new UnaryExpWithOpAST();
+    ast->unaryOp = '+';
+    ast->unaryExp = unique_ptr<BaseAST>($2);
+    $$ = ast;
+  }
+  | '-' UnaryExp {
+    auto ast = new UnaryExpWithOpAST();
+    ast->unaryOp = '-';
     ast->unaryExp = unique_ptr<BaseAST>($2);
     $$ = ast;
   }
   ;
-
-UnaryOp
-  : OPERATOR {
-    $$ = $1;
-  }
 
 MulExp
   : UnaryExp {
@@ -161,10 +167,24 @@ MulExp
     ast->unaryExp = unique_ptr<BaseAST>($1);
     $$ = ast;
   }
-  | MulExp UnaryOp UnaryExp {
+  | MulExp '*' UnaryExp {
     auto ast = new MulExpWithOpAST();
     ast->mulExp = unique_ptr<BaseAST>($1);
-    ast->mulOp = *unique_ptr<string>($2);
+    ast->mulOp = '*';
+    ast->unaryExp = unique_ptr<BaseAST>($3);
+    $$ = ast;
+  }
+  | MulExp '/' UnaryExp {
+    auto ast = new MulExpWithOpAST();
+    ast->mulExp = unique_ptr<BaseAST>($1);
+    ast->mulOp = '/';
+    ast->unaryExp = unique_ptr<BaseAST>($3);
+    $$ = ast;
+  }
+  | MulExp '%' UnaryExp {
+    auto ast = new MulExpWithOpAST();
+    ast->mulExp = unique_ptr<BaseAST>($1);
+    ast->mulOp = '%';
     ast->unaryExp = unique_ptr<BaseAST>($3);
     $$ = ast;
   }
@@ -176,10 +196,17 @@ AddExp
     ast->mulExp = unique_ptr<BaseAST>($1);
     $$ = ast;
   }
-  | AddExp UnaryOp MulExp {
+  | AddExp '+' MulExp {
     auto ast = new AddExpWithOpAST();
     ast->addExp = unique_ptr<BaseAST>($1);
-    ast->addOp = *unique_ptr<string>($2);
+    ast->addOp = '+';
+    ast->mulExp = unique_ptr<BaseAST>($3);
+    $$ = ast;
+  }
+  | AddExp '-' MulExp {
+    auto ast = new AddExpWithOpAST();
+    ast->addExp = unique_ptr<BaseAST>($1);
+    ast->addOp = '-';
     ast->mulExp = unique_ptr<BaseAST>($3);
     $$ = ast;
   }

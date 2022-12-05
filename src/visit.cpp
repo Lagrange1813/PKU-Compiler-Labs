@@ -97,7 +97,7 @@ void Visit(const koopa_raw_return_t& ret) {
 }
 
 void Visit(const koopa_raw_integer_t& integer) {
-  cout << integer.value;
+  cout << toascii(integer.value);
 }
 
 void Visit(const koopa_raw_binary_t& binary) {
@@ -120,13 +120,59 @@ void Visit(const koopa_raw_binary_t& binary) {
 
       break;
 
-    case 7:
+    case 6:
 
-      cout << "  sub   t" << asm_cnt << ", x0, t" << asm_cnt - 1 << "\n";
+      cout << "  add   t lhs: ";
+      Visit(binary.lhs);
+      cout << ", x0, rhs: ";
+      Visit(binary.rhs);
+      cout << "\n";
 
       asm_cnt++;
+
+      break;
+
+    // case 7:
+
+    //   cout << "  sub   t" << asm_cnt << ", x0, t" << asm_cnt - 1 << "\n";
+
+    //   asm_cnt++;
+
+    case 8:
+
+      cout << "  mul lhs: ";
+      Visit(binary.lhs);
+      cout << ", x0, t rhs: ";
+      Visit(binary.rhs);
+      cout << "\n";
+
+      asm_cnt++;
+
+      break;
 
     default:
       break;
   }
 }
+
+// str += "  li  t";
+//         str += std::to_string(cnt);
+//         str += ", ";
+//         str += std::to_string(result_l.second);
+//         str += "\n";
+//         cnt++;
+
+//         str += "  li  t";
+//         str += std::to_string(cnt);
+//         str += ", ";
+//         str += std::to_string(result_r.second);
+//         str += "\n";
+//         cnt++;
+
+//         str += "  mul t";
+//         str += std::to_string(cnt-1);
+//         str += ", t";
+//         str += std::to_string(cnt-2);
+//         str += ", t";
+//         str += std::to_string(cnt-1);
+//         str += "\n";

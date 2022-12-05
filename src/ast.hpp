@@ -1,6 +1,7 @@
 #pragma once
 #include <iostream>
 #include <string>
+#include <unordered_map>
 #include "koopa.h"
 
 extern std::string str;
@@ -196,7 +197,7 @@ class UnaryExpAST : public BaseAST {
 
 class UnaryExpWithOpAST : public BaseAST {
  public:
-  std::string unaryOp;
+  char unaryOp;
   std::unique_ptr<BaseAST> unaryExp;
 
   void Dump() const override {
@@ -210,14 +211,14 @@ class UnaryExpWithOpAST : public BaseAST {
     std::pair<bool, int> result = unaryExp->Output();
 
     if (result.first) {
-      if (unaryOp == "!") {
+      if (unaryOp == '!') {
         str += "  %";
         str += std::to_string(cnt);
         str += " = eq ";
         str += std::to_string(6);
         str += ", 0\n";
         cnt++;
-      } else if (unaryOp == "-") {
+      } else if (unaryOp == '-') {
         str += "  %";
         str += std::to_string(cnt);
         str += " = sub 0, ";
@@ -226,14 +227,14 @@ class UnaryExpWithOpAST : public BaseAST {
         cnt++;
       }
     } else {
-      if (unaryOp == "!") {
+      if (unaryOp == '!') {
         str += "  %";
         str += std::to_string(cnt);
         str += " = eq %";
         str += std::to_string(cnt - 1);
         str += ", 0\n";
         cnt++;
-      } else if (unaryOp == "-") {
+      } else if (unaryOp == '-') {
         str += "  %";
         str += std::to_string(cnt);
         str += " = sub 0, %";
@@ -263,7 +264,7 @@ class MulExpAST : public BaseAST {
 class MulExpWithOpAST : public BaseAST {
  public:
   std::unique_ptr<BaseAST> mulExp;
-  std::string mulOp;
+  char mulOp;
   std::unique_ptr<BaseAST> unaryExp;
 
   void Dump() const override {
@@ -275,6 +276,64 @@ class MulExpWithOpAST : public BaseAST {
   }
 
   std::pair<bool, int> Output() const override {
+    std::pair<bool, int> result_l = mulExp->Output();
+    std::pair<bool, int> result_r = unaryExp->Output();
+
+    std::unordered_map<char, std::string> dic = {
+        {'*', "mul"},
+        {'/', "div"},
+        {'%', "mod"},
+    };
+
+    if (result_l.first && result_r.first) {
+      str += "  %";
+      str += std::to_string(cnt);
+      str += " = ";
+      str += dic[mulOp];
+      str += " ";
+      str += std::to_string(result_l.second);
+      str += ", ";
+      str += std::to_string(result_r.second);
+      str += "\n";
+      cnt++;
+
+    } else if (result_l.first) {
+      str += "  %";
+      str += std::to_string(cnt);
+      str += " = ";
+      str += dic[mulOp];
+      str += " ";
+      str += std::to_string(result_l.second);
+      str += ", %";
+      str += std::to_string(cnt - 1);
+      str += "\n";
+      cnt++;
+
+    } else if (result_r.first) {
+      str += "  %";
+      str += std::to_string(cnt);
+      str += " = ";
+      str += dic[mulOp];
+      str += " %";
+      str += std::to_string(cnt - 1);
+      str += ", ";
+      str += std::to_string(result_r.second);
+      str += "\n";
+      cnt++;
+
+    } else {
+      str += "  %";
+      str += std::to_string(cnt);
+      str += " = ";
+      str += dic[mulOp];
+      str += " %";
+      str += std::to_string(cnt - 1);
+      str += ", %";
+      str += std::to_string(cnt - 2);
+      str += "\n";
+      cnt++;
+    }
+
     return std::pair<bool, int>(false, 0);
   }
 };
@@ -284,7 +343,7 @@ class AddExpAST : public BaseAST {
   std::unique_ptr<BaseAST> mulExp;
 
   void Dump() const override {
-    std::cout << "MulExpWithOpAST { ";
+    std::cout << "AddExpAST { ";
     mulExp->Dump();
     std::cout << " }";
   }
@@ -295,7 +354,7 @@ class AddExpAST : public BaseAST {
 class AddExpWithOpAST : public BaseAST {
  public:
   std::unique_ptr<BaseAST> addExp;
-  std::string addOp;
+  char addOp;
   std::unique_ptr<BaseAST> mulExp;
 
   void Dump() const override {
@@ -307,6 +366,63 @@ class AddExpWithOpAST : public BaseAST {
   }
 
   std::pair<bool, int> Output() const override {
+    std::pair<bool, int> result_l = addExp->Output();
+    std::pair<bool, int> result_r = mulExp->Output();
+
+    std::unordered_map<char, std::string> dic = {
+        {'+', "add"},
+        {'-', "sub"},
+    };
+
+    if (result_l.first && result_r.first) {
+      str += "  %";
+      str += std::to_string(cnt);
+      str += " = ";
+      str += dic[addOp];
+      str += " ";
+      str += std::to_string(result_l.second);
+      str += ", ";
+      str += std::to_string(result_r.second);
+      str += "\n";
+      cnt++;
+
+    } else if (result_l.first) {
+      str += "  %";
+      str += std::to_string(cnt);
+      str += " = ";
+      str += dic[addOp];
+      str += " ";
+      str += std::to_string(result_l.second);
+      str += ", %";
+      str += std::to_string(cnt - 1);
+      str += "\n";
+      cnt++;
+
+    } else if (result_r.first) {
+      str += "  %";
+      str += std::to_string(cnt);
+      str += " = ";
+      str += dic[addOp];
+      str += " %";
+      str += std::to_string(cnt - 1);
+      str += ", ";
+      str += std::to_string(result_r.second);
+      str += "\n";
+      cnt++;
+
+    } else {
+      str += "  %";
+      str += std::to_string(cnt);
+      str += " = ";
+      str += dic[addOp];
+      str += " %";
+      str += std::to_string(cnt - 1);
+      str += ", %";
+      str += std::to_string(cnt - 2);
+      str += "\n";
+      cnt++;
+    }
+
     return std::pair<bool, int>(false, 0);
   }
 };

@@ -30,13 +30,11 @@ Decimal       [1-9][0-9]*
 Octal         0[0-7]*
 Hexadecimal   0[xX][0-9a-fA-F]+
 
-Operator      [!*\/+-]
-
 %%
 
 {WhiteSpace}    { /* 忽略, 不做任何操作 */ }
 {LineComment}   { /* 忽略, 不做任何操作 */ }
-{BlockComment}   { /* 忽略, 不做任何操作 */ }
+{BlockComment}  { /* 忽略, 不做任何操作 */ }
 
 "int"           { return INT; }
 "return"        { return RETURN; }
@@ -46,8 +44,6 @@ Operator      [!*\/+-]
 {Decimal}       { yylval.int_val = strtol(yytext, nullptr, 0); return INT_CONST; }
 {Octal}         { yylval.int_val = strtol(yytext, nullptr, 0); return INT_CONST; }
 {Hexadecimal}   { yylval.int_val = strtol(yytext, nullptr, 0); return INT_CONST; }
-
-{Operator}      { yylval.str_val = new string(yytext); return OPERATOR; }
 
 .               { return yytext[0]; }
 
