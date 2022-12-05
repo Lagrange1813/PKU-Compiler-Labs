@@ -131,16 +131,16 @@ class StmtAST: public BaseAST {
 
 class ExpAST: public BaseAST {
   public:
-    std::unique_ptr<BaseAST> unaryExp;
+    std::unique_ptr<BaseAST> addExp;
 
     void Dump() const override {
       std::cout << "ExpAST { ";
-      unaryExp->Dump();
+      addExp->Dump();
       std::cout << " }";
     }
 
     std::pair<bool, int> Output() const override {
-      std::pair<bool, int> result = unaryExp->Output();
+      std::pair<bool, int> result = addExp->Output();
 
       return result;
     }
@@ -243,6 +243,74 @@ class UnaryExpWithOpAST: public BaseAST {
         }
       }
 
+      return std::pair<bool, int>(false, 0);
+    }
+};
+
+class MulExpAST: public BaseAST {
+  public:
+    std::unique_ptr<BaseAST> unaryExp;
+
+    void Dump() const override {
+      std::cout << "MulExpAST { ";
+      unaryExp->Dump();
+      std::cout << " }";
+    }
+
+    std::pair<bool, int> Output() const override {
+      return unaryExp->Output();
+    }
+};
+
+class MulExpWithOpAST: public BaseAST {
+  public:
+    std::unique_ptr<BaseAST> mulExp;
+    std::string mulOp;
+    std::unique_ptr<BaseAST> unaryExp;
+
+    void Dump() const override {
+      std::cout << "MulExpWithOpAST { ";
+      mulExp->Dump();
+      std::cout << "MulExpOpAST { " << mulOp << " }";
+      unaryExp->Dump();
+      std::cout << " }";
+    }
+
+    std::pair<bool, int> Output() const override {
+      return std::pair<bool, int>(false, 0);
+    }
+};
+
+class AddExpAST: public BaseAST {
+  public:
+    std::unique_ptr<BaseAST> mulExp;
+
+    void Dump() const override {
+      std::cout << "MulExpWithOpAST { ";
+      mulExp->Dump();
+      std::cout << " }";
+    }
+
+    std::pair<bool, int> Output() const override {
+      return mulExp->Output();
+    }
+};
+
+class AddExpWithOpAST: public BaseAST {
+  public:
+    std::unique_ptr<BaseAST> addExp;
+    std::string addOp;
+    std::unique_ptr<BaseAST> mulExp;
+
+    void Dump() const override {
+      std::cout << "AddExpWithOpAST { ";
+      addExp->Dump();
+      std::cout << "AddExpOpAST { " << addOp << " }";
+      mulExp->Dump();
+      std::cout << " }";
+    }
+
+    std::pair<bool, int> Output() const override {
       return std::pair<bool, int>(false, 0);
     }
 };
