@@ -40,12 +40,13 @@ using namespace std;
 // lexer 返回的所有 token 种类的声明
 // 注意 IDENT 和 INT_CONST 会返回 token 的值, 分别对应 str_val 和 int_val
 %token INT RETURN
-%token <str_val> IDENT
+%token <str_val> IDENT OPERATOR
 %token <int_val> INT_CONST
 
 // 非终结符的类型定义
-%type <ast_val> FuncDef FuncType Block Stmt Exp PrimaryExp UnaryExp UnaryOp 
+%type <ast_val> FuncDef FuncType Block Stmt Exp PrimaryExp UnaryExp
 %type <int_val> Number
+%type <str_val> UnaryOp
 
 %%
 
@@ -131,8 +132,6 @@ PrimaryExp
 
 Number
   : INT_CONST {
-    // auto ast = new NumberAST();
-    // ast->value = $1;
     $$ = $1;
   }
   ;
@@ -145,29 +144,16 @@ UnaryExp
   }
   | UnaryOp UnaryExp {
     auto ast = new UnaryExpWithOpAST();
-    ast->unaryOp = unique_ptr<BaseAST>($1);
+    ast->unaryOp = *unique_ptr<string>($1);
     ast->unaryExp = unique_ptr<BaseAST>($2);
     $$ = ast;
   }
   ;
 
 UnaryOp
-  : '+' {
-    auto ast = new UnaryOpPlusAST();
-    ast->op = '+';
-    $$ = ast;
+  : OPERATOR {
+    $$ = $1;
   }
-  | '-' {
-    auto ast = new UnaryOpMinusAST();
-    ast->op = '-';
-    $$ = ast;
-  }
-  | '!' {
-    auto ast = new UnaryOpNotAST();
-    ast->op = '!';
-    $$ = ast;
-  }
-  ;
 
 %%
 

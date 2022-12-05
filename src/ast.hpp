@@ -113,10 +113,18 @@ class StmtAST: public BaseAST {
     std::pair<bool, int> Output() const override {
       exp->ret = true;
 
-      exp->Output();
-      str += "  ret %";
-      str += std::to_string(cnt - 1);
-      str += "\n";
+      std::pair<bool, int> result = exp->Output();
+      std::cout << result.first << result.second << std::endl;
+
+      if (result.first) {
+        str += "  ret ";
+        str += std::to_string(result.second);
+        str += "\n";
+      } else {
+        str += "  ret %";
+        str += std::to_string(cnt - 1);
+        str += "\n";
+      }
 
       return std::pair<bool, int>(false, 0);
     }
@@ -133,11 +141,9 @@ class ExpAST: public BaseAST {
     }
 
     std::pair<bool, int> Output() const override {
-      unaryExp->ret = this->ret;
+      std::pair<bool, int> result = unaryExp->Output();
 
-      unaryExp->Output();
-
-      return std::pair<bool, int>(false, 0);
+      return result;
     }
 };
 
@@ -184,77 +190,78 @@ class UnaryExpAST: public BaseAST {
     }
 
     std::pair<bool, int> Output() const override {
-      primaryExp->Output();
-
-      return std::pair<bool, int>(false, 0);
-    }
-};
-
-class UnaryOpPlusAST: public BaseAST {
-  public:
-    char op;
-
-    void Dump() const override {
-      std::cout << "UnaryOpPlusAST { ";
-      std::cout << op;
-      std::cout << " }";
-    }
-
-    std::pair<bool, int> Output() const override {
-      return std::pair<bool, int>(false, 0);
-    }
-};
-
-class UnaryOpMinusAST: public BaseAST {
-  public:
-    char op;
-
-    void Dump() const override {
-      std::cout << "UnaryOpMinusAST { ";
-      std::cout << op;
-      std::cout << " }";
-    }
-
-    std::pair<bool, int> Output() const override {
-      str += "  %1 = sub 0, %0\n";
-
-      return std::pair<bool, int>(false, 0);
-    }
-};
-
-class UnaryOpNotAST: public BaseAST {
-  public:
-    char op;
-
-    void Dump() const override {
-      std::cout << "UnaryOpNotAST { ";
-      std::cout << op;
-      std::cout << " }";
-    }
-
-    std::pair<bool, int> Output() const override {
-      str += "  %0 = eq 6, 0\n";
-
-      return std::pair<bool, int>(false, 0);
+      std::pair<bool, int> result = primaryExp->Output();
+      return result;
     }
 };
 
 class UnaryExpWithOpAST: public BaseAST {
   public:
-    std::unique_ptr<BaseAST> unaryOp;
+    std::string unaryOp;
     std::unique_ptr<BaseAST> unaryExp;
 
     void Dump() const override {
       std::cout << "UnaryExpWithOpAST { ";
-      unaryOp->Dump();
+      std::cout << "UnaryOpAST { " << unaryOp << " }";
       unaryExp->Dump();
       std::cout << " }";
     }
 
     std::pair<bool, int> Output() const override {
-      unaryOp->Output();
-      unaryExp->Output();
+      std::pair<bool, int> result = unaryExp->Output();
+
+      if (result.first) {
+        if (unaryOp == "!") {
+          str += "  %";
+          str += std::to_string(cnt);
+          str += " = eq ";
+          str += std::to_string(6);
+          str += ", 0\n";
+          cnt++;
+        } else if (unaryOp == "-") {
+          str += "  %";
+          str += std::to_string(cnt);
+          str += " = sub 0, ";
+          str += std::to_string(6);
+          str += "\n";
+          cnt++;
+        }
+      } else {
+        if (unaryOp == "!") {
+          str += "  %";
+          str += std::to_string(cnt);
+          str += " = eq %";
+          str += std::to_string(cnt - 1);
+          str += ", 0\n";
+          cnt++;
+        } else if (unaryOp == "-") {
+          str += "  %";
+          str += std::to_string(cnt);
+          str += " = sub 0, %";
+          str += std::to_string(cnt - 1);
+          str += "\n";
+          cnt++;
+        }
+      }
 
       return std::pair<bool, int>(false, 0);
     }
 };
+
+// void Generate(int num) {
+//       if (op == '!') {
+//         str += "  %";
+//         str += std::to_string(cnt);
+//         str += " = eq ";
+//         str += std::to_string(num);
+//         str += ", 0\n";
+//         cnt++;
+//       } else if (op == '-') {
+//         str += "  %";
+//         str += std::to_string(cnt);
+//         str += " = sub 0, ";
+//         str += std::to_string(num);
+//         str += "\n";
+//         cnt++;
+//       }
+//     }
