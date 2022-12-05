@@ -4,6 +4,8 @@
 
 using namespace std;
 
+int asm_cnt = 0;
+
 // 访问 raw program
 void Visit(const koopa_raw_program_t &program) {
   // 执行一些其他的必要操作
@@ -52,7 +54,7 @@ void Visit(const koopa_raw_function_t &func) {
 // 访问基本块
 void Visit(const koopa_raw_basic_block_t &bb) {
   // 执行一些其他的必要操作
-  // cout << bb->name;
+  // cout << bb->name << "\n";
   // 访问所有指令
   Visit(bb->insts);
 }
@@ -70,18 +72,56 @@ void Visit(const koopa_raw_value_t &value) {
       // 访问 integer 指令
       Visit(kind.data.integer);
       break;
+    case KOOPA_RVT_BINARY:
+      Visit(kind.data.binary);
+      break;
     default:
       // 其他类型暂时遇不到
       assert(false);
+      break;
   }
 }
 
 void Visit(const koopa_raw_return_t &ret) {
   // assert(ret.value->kind.tag == KOOPA_RVT_INTEGER);
-  Visit(ret.value->kind.data.integer);
+  if (asm_cnt == 0) {
+    cout << "  li a0, ";
+    Visit(ret.value->kind.data.integer);
+    cout << "\n";
+  } else {
+    cout << "  mv    a0, " << "t" << asm_cnt - 1 << "\n";
+  }
   cout<< "  ret" << "\n";
 }
 
 void Visit(const koopa_raw_integer_t &integer) {
-  cout<< "  li a0, " << integer.value << "\n";
+  cout<< integer.value;
+}
+
+void Visit(const koopa_raw_binary_t &binary) {
+  switch (binary.op) {
+  case 1:
+
+    // 1
+    cout << "  li    " << "t" << asm_cnt << ", ";
+    Visit(binary.lhs);
+    cout << "\n";
+    // 2
+    cout << "  xor   " << "t" << asm_cnt << ", t" << asm_cnt << ", x0\n";
+    // 3
+    cout << "  seqz  " << "t" << asm_cnt << ", t" << asm_cnt << "\n";
+
+    asm_cnt++;
+
+    break;
+
+  case 7:
+
+    cout << "  sub   t" << asm_cnt << ", x0, t" << asm_cnt - 1 << "\n";
+
+    asm_cnt++;
+
+  default:
+    break;
+  }
 }
