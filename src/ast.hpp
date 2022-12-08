@@ -474,7 +474,56 @@ class RelExpWithOpAST : public BaseAST {
         {">=", "ge"},
     };
 
-    return relExp->Output();
+    if (result_l.first && result_r.first) {
+      str += "  %";
+      str += std::to_string(cnt);
+      str += " = ";
+      str += dic[relOp];
+      str += " ";
+      str += std::to_string(result_l.second);
+      str += ", ";
+      str += std::to_string(result_r.second);
+      str += "\n";
+      cnt++;
+
+    } else if (result_l.first) {
+      str += "  %";
+      str += std::to_string(cnt);
+      str += " = ";
+      str += dic[relOp];
+      str += " ";
+      str += std::to_string(result_l.second);
+      str += ", %";
+      str += std::to_string(cnt_r);
+      str += "\n";
+      cnt++;
+
+    } else if (result_r.first) {
+      str += "  %";
+      str += std::to_string(cnt);
+      str += " = ";
+      str += dic[relOp];
+      str += " %";
+      str += std::to_string(cnt_l);
+      str += ", ";
+      str += std::to_string(result_r.second);
+      str += "\n";
+      cnt++;
+
+    } else {
+      str += "  %";
+      str += std::to_string(cnt);
+      str += " = ";
+      str += dic[relOp];
+      str += " %";
+      str += std::to_string(cnt_l);
+      str += ", %";
+      str += std::to_string(cnt_r);
+      str += "\n";
+      cnt++;
+    }
+
+    return std::pair<bool, int>(false, 0);
   }
 };
 
@@ -517,7 +566,56 @@ class EqExpWithOpAST : public BaseAST {
         {"!=", "ne"},
     };
 
-    return eqExp->Output();
+    if (result_l.first && result_r.first) {
+      str += "  %";
+      str += std::to_string(cnt);
+      str += " = ";
+      str += dic[eqOp];
+      str += " ";
+      str += std::to_string(result_l.second);
+      str += ", ";
+      str += std::to_string(result_r.second);
+      str += "\n";
+      cnt++;
+
+    } else if (result_l.first) {
+      str += "  %";
+      str += std::to_string(cnt);
+      str += " = ";
+      str += dic[eqOp];
+      str += " ";
+      str += std::to_string(result_l.second);
+      str += ", %";
+      str += std::to_string(cnt_r);
+      str += "\n";
+      cnt++;
+
+    } else if (result_r.first) {
+      str += "  %";
+      str += std::to_string(cnt);
+      str += " = ";
+      str += dic[eqOp];
+      str += " %";
+      str += std::to_string(cnt_l);
+      str += ", ";
+      str += std::to_string(result_r.second);
+      str += "\n";
+      cnt++;
+
+    } else {
+      str += "  %";
+      str += std::to_string(cnt);
+      str += " = ";
+      str += dic[eqOp];
+      str += " %";
+      str += std::to_string(cnt_l);
+      str += ", %";
+      str += std::to_string(cnt_r);
+      str += "\n";
+      cnt++;
+    }
+
+    return std::pair<bool, int>(false, 0);
   }
 };
 
@@ -555,7 +653,56 @@ class LAndExpWithOpAST : public BaseAST {
     std::pair<bool, int> result_r = eqExp->Output();
     int cnt_r = cnt - 1;
 
-    return lAndExp->Output();
+    if (result_l.first && result_r.first) {
+      str += "  %";
+      str += std::to_string(cnt);
+      str += " = ";
+      str += "and";
+      str += " ";
+      str += std::to_string(result_l.second);
+      str += ", ";
+      str += std::to_string(result_r.second);
+      str += "\n";
+      cnt++;
+
+    } else if (result_l.first) {
+      str += "  %";
+      str += std::to_string(cnt);
+      str += " = ";
+      str += "and";
+      str += " ";
+      str += std::to_string(result_l.second);
+      str += ", %";
+      str += std::to_string(cnt_r);
+      str += "\n";
+      cnt++;
+
+    } else if (result_r.first) {
+      str += "  %";
+      str += std::to_string(cnt);
+      str += " = ";
+      str += "and";
+      str += " %";
+      str += std::to_string(cnt_l);
+      str += ", ";
+      str += std::to_string(result_r.second);
+      str += "\n";
+      cnt++;
+
+    } else {
+      str += "  %";
+      str += std::to_string(cnt);
+      str += " = ";
+      str += "and";
+      str += " %";
+      str += std::to_string(cnt_l);
+      str += ", %";
+      str += std::to_string(cnt_r);
+      str += "\n";
+      cnt++;
+    }
+
+    return std::pair<bool, int>(false, 0);
   }
 };
 
@@ -593,6 +740,55 @@ class LOrExpWithOpAST : public BaseAST {
     std::pair<bool, int> result_r = lAndExp->Output();
     int cnt_r = cnt - 1;
 
-    return lOrExp->Output();
+    if (result_l.first && result_r.first) {
+      str += "  %";
+      str += std::to_string(cnt);
+      str += " = ";
+      str += "or";
+      str += " ";
+      str += std::to_string(result_l.second);
+      str += ", ";
+      str += std::to_string(result_r.second);
+      str += "\n";
+      cnt++;
+
+    } else if (result_l.first) {
+      str += "  %";
+      str += std::to_string(cnt);
+      str += " = ";
+      str += "or";
+      str += " ";
+      str += std::to_string(result_l.second);
+      str += ", %";
+      str += std::to_string(cnt_r);
+      str += "\n";
+      cnt++;
+
+    } else if (result_r.first) {
+      str += "  %";
+      str += std::to_string(cnt);
+      str += " = ";
+      str += "or";
+      str += " %";
+      str += std::to_string(cnt_l);
+      str += ", ";
+      str += std::to_string(result_r.second);
+      str += "\n";
+      cnt++;
+
+    } else {
+      str += "  %";
+      str += std::to_string(cnt);
+      str += " = ";
+      str += "or";
+      str += " %";
+      str += std::to_string(cnt_l);
+      str += ", %";
+      str += std::to_string(cnt_r);
+      str += "\n";
+      cnt++;
+    }
+
+    return std::pair<bool, int>(false, 0);
   }
 };
