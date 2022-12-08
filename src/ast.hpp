@@ -132,16 +132,16 @@ class StmtAST : public BaseAST {
 
 class ExpAST : public BaseAST {
  public:
-  std::unique_ptr<BaseAST> addExp;
+  std::unique_ptr<BaseAST> lOrExp;
 
   void Dump() const override {
     std::cout << "ExpAST { ";
-    addExp->Dump();
+    lOrExp->Dump();
     std::cout << " }";
   }
 
   std::pair<bool, int> Output() const override {
-    std::pair<bool, int> result = addExp->Output();
+    std::pair<bool, int> result = lOrExp->Output();
 
     return result;
   }
@@ -430,5 +430,169 @@ class AddExpWithOpAST : public BaseAST {
     }
 
     return std::pair<bool, int>(false, 0);
+  }
+};
+
+class RelExpAST : public BaseAST {
+ public:
+  std::unique_ptr<BaseAST> addExp;
+
+  void Dump() const override {
+    std::cout << "RelExpAST { ";
+    addExp->Dump();
+    std::cout << " }";
+  }
+
+  std::pair<bool, int> Output() const override { return addExp->Output(); }
+};
+
+class RelExpWithOpAST : public BaseAST {
+ public:
+  std::unique_ptr<BaseAST> relExp;
+  std::string relOp;
+  std::unique_ptr<BaseAST> addExp;
+
+  void Dump() const override {
+    std::cout << "RelExpWithOpAST { ";
+    relExp->Dump();
+    std::cout << "RelExpOpAST { " << relOp << " }";
+    addExp->Dump();
+    std::cout << " }";
+  }
+
+  std::pair<bool, int> Output() const override {
+    std::pair<bool, int> result_l = relExp->Output();
+    int cnt_l = cnt - 1;
+
+    std::pair<bool, int> result_r = addExp->Output();
+    int cnt_r = cnt - 1;
+
+    std::unordered_map<std::string, std::string> dic = {
+        {"<", "lt"},
+        {">", "gt"},
+        {"<=", "le"},
+        {">=", "ge"},
+    };
+
+    return relExp->Output();
+  }
+};
+
+class EqExpAST : public BaseAST {
+ public:
+  std::unique_ptr<BaseAST> relExp;
+
+  void Dump() const override {
+    std::cout << "EqExpAST { ";
+    relExp->Dump();
+    std::cout << " }";
+  }
+
+  std::pair<bool, int> Output() const override { return relExp->Output(); }
+};
+
+class EqExpWithOpAST : public BaseAST {
+ public:
+  std::unique_ptr<BaseAST> eqExp;
+  std::string eqOp;
+  std::unique_ptr<BaseAST> relExp;
+
+  void Dump() const override {
+    std::cout << "EqExpWithOpAST { ";
+    eqExp->Dump();
+    std::cout << "EqExpOpAST { " << eqOp << " }";
+    relExp->Dump();
+    std::cout << " }";
+  }
+
+  std::pair<bool, int> Output() const override {
+    std::pair<bool, int> result_l = eqExp->Output();
+    int cnt_l = cnt - 1;
+
+    std::pair<bool, int> result_r = relExp->Output();
+    int cnt_r = cnt - 1;
+
+    std::unordered_map<std::string, std::string> dic = {
+        {"==", "eq"},
+        {"!=", "ne"},
+    };
+
+    return eqExp->Output();
+  }
+};
+
+class LAndExpAST : public BaseAST {
+ public:
+  std::unique_ptr<BaseAST> eqExp;
+
+  void Dump() const override {
+    std::cout << "LAndExpAST { ";
+    eqExp->Dump();
+    std::cout << " }";
+  }
+
+  std::pair<bool, int> Output() const override { return eqExp->Output(); }
+};
+
+class LAndExpWithOpAST : public BaseAST {
+ public:
+  std::unique_ptr<BaseAST> lAndExp;
+  std::string lAndOp;
+  std::unique_ptr<BaseAST> eqExp;
+
+  void Dump() const override {
+    std::cout << "EqExpWithOpAST { ";
+    lAndExp->Dump();
+    std::cout << "EqExpOpAST { " << lAndOp << " }";
+    eqExp->Dump();
+    std::cout << " }";
+  }
+
+  std::pair<bool, int> Output() const override {
+    std::pair<bool, int> result_l = lAndExp->Output();
+    int cnt_l = cnt - 1;
+
+    std::pair<bool, int> result_r = eqExp->Output();
+    int cnt_r = cnt - 1;
+
+    return lAndExp->Output();
+  }
+};
+
+class LOrExpAST : public BaseAST {
+ public:
+  std::unique_ptr<BaseAST> lAndExp;
+
+  void Dump() const override {
+    std::cout << "LOrExpAST { ";
+    lAndExp->Dump();
+    std::cout << " }";
+  }
+
+  std::pair<bool, int> Output() const override { return lAndExp->Output(); }
+};
+
+class LOrExpWithOpAST : public BaseAST {
+ public:
+  std::unique_ptr<BaseAST> lOrExp;
+  std::string lOrOp;
+  std::unique_ptr<BaseAST> lAndExp;
+
+  void Dump() const override {
+    std::cout << "LOrExpWithOpAST { ";
+    lOrExp->Dump();
+    std::cout << "LOrExpOpAST { " << lOrOp << " }";
+    lAndExp->Dump();
+    std::cout << " }";
+  }
+
+  std::pair<bool, int> Output() const override {
+    std::pair<bool, int> result_l = lOrExp->Output();
+    int cnt_l = cnt - 1;
+
+    std::pair<bool, int> result_r = lAndExp->Output();
+    int cnt_r = cnt - 1;
+
+    return lOrExp->Output();
   }
 };
