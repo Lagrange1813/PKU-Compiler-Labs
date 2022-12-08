@@ -215,14 +215,14 @@ class UnaryExpWithOpAST : public BaseAST {
         str += "  %";
         str += std::to_string(cnt);
         str += " = eq ";
-        str += std::to_string(6);
+        str += std::to_string(result.second);
         str += ", 0\n";
         cnt++;
       } else if (unaryOp == '-') {
         str += "  %";
         str += std::to_string(cnt);
         str += " = sub 0, ";
-        str += std::to_string(6);
+        str += std::to_string(result.second);
         str += "\n";
         cnt++;
       }
