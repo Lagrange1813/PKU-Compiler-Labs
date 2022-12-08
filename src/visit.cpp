@@ -1,10 +1,12 @@
 #include <iostream>
+#include <unordered_map>
 
 #include "visit.hpp"
 
 using namespace std;
 
 int asm_cnt = 0;
+unordered_map<koopa_raw_value_t, int> dic;
 
 // 访问 raw program
 void Visit(const koopa_raw_program_t& program) {
@@ -104,8 +106,19 @@ void Visit(const koopa_raw_integer_t& integer) {
   // if (integer.value == 0) {
   //   cout << "x0";
   // } else {
-    cout << integer.value;
+  cout << integer.value;
   // }
+}
+
+void Search(const koopa_raw_value_t& value) {
+  if (value->kind.tag == KOOPA_RVT_INTEGER) {
+    cout << "  li t" << asm_cnt << ", ";
+    Visit(value->kind.data.integer);
+    cout << "\n";
+  
+    dic[value] = asm_cnt;
+    asm_cnt++;
+  }
 }
 
 void Visit(const koopa_raw_binary_t& binary) {
@@ -199,10 +212,10 @@ void Visit(const koopa_raw_binary_t& binary) {
         cout << "\n";
         asm_cnt++;
 
-        cout << "  add t" << asm_cnt - 1 << ", t" << asm_cnt - 2 << ", t" << asm_cnt - 1 << "\n";
+        cout << "  sub t" << asm_cnt - 1 << ", t" << asm_cnt - 2 << ", t" << asm_cnt - 1 << "\n";
 
       } else {
-        cout << "  add t" << asm_cnt - 1 << ", t" << asm_cnt - 2 << ", t" << asm_cnt - 1 << "\n";
+        cout << "  sub t" << asm_cnt - 1 << ", t" << asm_cnt - 2 << ", t" << asm_cnt - 1 << "\n";
       }
 
       // cout << "  sub   t" << asm_cnt << ", x0, t" << asm_cnt - 1 << "\n";
@@ -243,6 +256,44 @@ void Visit(const koopa_raw_binary_t& binary) {
 
       } else {
         cout << "  mul t" << asm_cnt - 1 << ", t" << asm_cnt - 2 << ", t" << asm_cnt - 1 << "\n";
+      }
+
+      break;
+
+    /// Division.
+    case 9:
+
+      if (l_int && r_int) {
+        cout << "  li t" << asm_cnt << ", ";
+        Visit(binary.lhs->kind.data.integer);
+        cout << "\n";
+        asm_cnt++;
+
+        cout << "  li t" << asm_cnt << ", ";
+        Visit(binary.rhs->kind.data.integer);
+        cout << "\n";
+        asm_cnt++;
+
+        cout << "  div t" << asm_cnt - 1 << ", t" << asm_cnt - 2 << ", t" << asm_cnt - 1 << "\n";
+
+      } else if (l_int) {
+        cout << "  li t" << asm_cnt << ", ";
+        Visit(binary.lhs->kind.data.integer);
+        cout << "\n";
+        asm_cnt++;
+
+        cout << "  div t" << asm_cnt - 1 << ", t" << asm_cnt - 2 << ", t" << asm_cnt - 1 << "\n";
+
+      } else if (r_int) {
+        cout << "  li t" << asm_cnt << ", ";
+        Visit(binary.rhs->kind.data.integer);
+        cout << "\n";
+        asm_cnt++;
+
+        cout << "  div t" << asm_cnt - 1 << ", t" << asm_cnt - 2 << ", t" << asm_cnt - 1 << "\n";
+
+      } else {
+        cout << "  div t" << asm_cnt - 1 << ", t" << asm_cnt - 2 << ", t" << asm_cnt - 1 << "\n";
       }
 
       break;

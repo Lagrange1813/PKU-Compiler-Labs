@@ -277,7 +277,10 @@ class MulExpWithOpAST : public BaseAST {
 
   std::pair<bool, int> Output() const override {
     std::pair<bool, int> result_l = mulExp->Output();
+    int cnt_l = cnt - 1;
+
     std::pair<bool, int> result_r = unaryExp->Output();
+    int cnt_r = cnt - 1;
 
     std::unordered_map<char, std::string> dic = {
         {'*', "mul"},
@@ -305,7 +308,7 @@ class MulExpWithOpAST : public BaseAST {
       str += " ";
       str += std::to_string(result_l.second);
       str += ", %";
-      str += std::to_string(cnt - 1);
+      str += std::to_string(cnt_r);
       str += "\n";
       cnt++;
 
@@ -315,7 +318,7 @@ class MulExpWithOpAST : public BaseAST {
       str += " = ";
       str += dic[mulOp];
       str += " %";
-      str += std::to_string(cnt - 1);
+      str += std::to_string(cnt_l);
       str += ", ";
       str += std::to_string(result_r.second);
       str += "\n";
@@ -327,9 +330,9 @@ class MulExpWithOpAST : public BaseAST {
       str += " = ";
       str += dic[mulOp];
       str += " %";
-      str += std::to_string(cnt - 1);
+      str += std::to_string(cnt_l);
       str += ", %";
-      str += std::to_string(cnt - 2);
+      str += std::to_string(cnt_r);
       str += "\n";
       cnt++;
     }
@@ -367,7 +370,10 @@ class AddExpWithOpAST : public BaseAST {
 
   std::pair<bool, int> Output() const override {
     std::pair<bool, int> result_l = addExp->Output();
+    int cnt_l = cnt - 1;
+
     std::pair<bool, int> result_r = mulExp->Output();
+    int cnt_r = cnt - 1;
 
     std::unordered_map<char, std::string> dic = {
         {'+', "add"},
@@ -394,7 +400,7 @@ class AddExpWithOpAST : public BaseAST {
       str += " ";
       str += std::to_string(result_l.second);
       str += ", %";
-      str += std::to_string(cnt - 1);
+      str += std::to_string(cnt_r);
       str += "\n";
       cnt++;
 
@@ -404,7 +410,7 @@ class AddExpWithOpAST : public BaseAST {
       str += " = ";
       str += dic[addOp];
       str += " %";
-      str += std::to_string(cnt - 1);
+      str += std::to_string(cnt_l);
       str += ", ";
       str += std::to_string(result_r.second);
       str += "\n";
@@ -416,9 +422,9 @@ class AddExpWithOpAST : public BaseAST {
       str += " = ";
       str += dic[addOp];
       str += " %";
-      str += std::to_string(cnt - 1);
+      str += std::to_string(cnt_l);
       str += ", %";
-      str += std::to_string(cnt - 2);
+      str += std::to_string(cnt_r);
       str += "\n";
       cnt++;
     }
