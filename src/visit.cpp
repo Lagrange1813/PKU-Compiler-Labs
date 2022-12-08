@@ -6,7 +6,7 @@
 using namespace std;
 
 int asm_cnt = 0;
-unordered_map<koopa_raw_value_t, int> dic;
+unordered_map<koopa_raw_value_t, string> dic;
 
 // 访问 raw program
 void Visit(const koopa_raw_program_t& program) {
@@ -76,7 +76,7 @@ void Visit(const koopa_raw_value_t& value) {
       break;
     case KOOPA_RVT_BINARY:
       // 访问 binary 指令
-      Visit(kind.data.binary);
+      Visit(kind.data.binary, value);
       break;
     default:
       // 其他类型暂时遇不到
@@ -103,25 +103,23 @@ void Visit(const koopa_raw_return_t& ret) {
 }
 
 void Visit(const koopa_raw_integer_t& integer) {
-  // if (integer.value == 0) {
-  //   cout << "x0";
-  // } else {
   cout << integer.value;
-  // }
 }
 
-void Search(const koopa_raw_value_t& value) {
-  if (value->kind.tag == KOOPA_RVT_INTEGER) {
+void Search(const koopa_raw_value_t value) {
+  if (value->kind.tag == KOOPA_RVT_INTEGER && value->kind.data.integer.value != 0) {
     cout << "  li t" << asm_cnt << ", ";
     Visit(value->kind.data.integer);
     cout << "\n";
   
-    dic[value] = asm_cnt;
+    dic[value] = "t" + to_string(asm_cnt);
     asm_cnt++;
+  } else if (value->kind.tag == KOOPA_RVT_INTEGER && value->kind.data.integer.value == 0) {
+    dic[value] = "x0";
   }
 }
 
-void Visit(const koopa_raw_binary_t& binary) {
+void Visit(const koopa_raw_binary_t& binary, const koopa_raw_value_t& value) {
   bool l_int = binary.lhs->kind.tag == KOOPA_RVT_INTEGER;
   bool r_int = binary.rhs->kind.tag == KOOPA_RVT_INTEGER;
 
@@ -180,45 +178,18 @@ void Visit(const koopa_raw_binary_t& binary) {
         cout << "  add t" << asm_cnt - 1 << ", t" << asm_cnt - 2 << ", t" << asm_cnt - 1 << "\n";
       }
 
+      dic[value] = "t" + to_string(asm_cnt - 1);
+
       break;
 
     /// Subtraction.
     case 7:
 
-      if (l_int && r_int) {
-        cout << "  li t" << asm_cnt << ", ";
-        Visit(binary.lhs->kind.data.integer);
-        cout << "\n";
-        asm_cnt++;
+      Search(binary.lhs);
+      Search(binary.rhs);
+      cout << "  sub t" << asm_cnt - 1 << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
 
-        cout << "  li t" << asm_cnt << ", ";
-        Visit(binary.rhs->kind.data.integer);
-        cout << "\n";
-        asm_cnt++;
-
-        cout << "  sub t" << asm_cnt - 1 << ", t" << asm_cnt - 2 << ", t" << asm_cnt - 1 << "\n";
-
-      } else if (l_int) {
-        cout << "  li t" << asm_cnt << ", ";
-        Visit(binary.lhs->kind.data.integer);
-        cout << "\n";
-        asm_cnt++;
-
-        cout << "  sub t" << asm_cnt - 1 << ", t" << asm_cnt - 1 << ", t" << asm_cnt - 2 << "\n";
-
-      } else if (r_int) {
-        cout << "  li t" << asm_cnt << ", ";
-        Visit(binary.rhs->kind.data.integer);
-        cout << "\n";
-        asm_cnt++;
-
-        cout << "  sub t" << asm_cnt - 1 << ", t" << asm_cnt - 2 << ", t" << asm_cnt - 1 << "\n";
-
-      } else {
-        cout << "  sub t" << asm_cnt - 1 << ", t" << asm_cnt - 2 << ", t" << asm_cnt - 1 << "\n";
-      }
-
-      // cout << "  sub   t" << asm_cnt << ", x0, t" << asm_cnt - 1 << "\n";
+      dic[value] = "t" + to_string(asm_cnt - 1);
 
       break;
 
@@ -295,6 +266,8 @@ void Visit(const koopa_raw_binary_t& binary) {
       } else {
         cout << "  div t" << asm_cnt - 1 << ", t" << asm_cnt - 2 << ", t" << asm_cnt - 1 << "\n";
       }
+
+      dic[value] = "t" + to_string(asm_cnt - 1);
 
       break;
 

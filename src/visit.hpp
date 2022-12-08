@@ -12,4 +12,4 @@ void Visit(const koopa_raw_value_t& value);
 
 void Visit(const koopa_raw_return_t& ret);
 void Visit(const koopa_raw_integer_t& integer);
-void Visit(const koopa_raw_binary_t& binary);
+void Visit(const koopa_raw_binary_t& binary, const koopa_raw_value_t& value);
