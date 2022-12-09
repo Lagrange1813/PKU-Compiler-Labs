@@ -512,6 +512,23 @@ std::pair<bool, int> LAndExpAST::Output() const {
   return eqExp->Output();
 }
 
+bool filter(int input) {
+  if (input == 0 || input == 1) {
+    return true;
+  }
+
+  str += "  %";
+  str += std::to_string(cnt);
+  str += " = ";
+  str += "ne";
+  str += " ";
+  str += std::to_string(input);
+  str += ", 0\n";
+  cnt++;
+
+  return false;
+}
+
 void LAndExpWithOpAST::Dump() const {
   std::cout << "EqExpWithOpAST { ";
   lAndExp->Dump();
@@ -528,56 +545,76 @@ std::pair<bool, int> LAndExpWithOpAST::Output() const {
   int cnt_r = cnt - 1;
 
   if (result_l.first && result_r.first) {
-    str += "  %";
-    str += std::to_string(cnt);
-    str += " = ";
-    str += "eq";
-    str += " ";
-    str += std::to_string(result_l.second);
-    str += ", 0\n";
-    cnt++;
-
-    str += "  %";
-    str += std::to_string(cnt);
-    str += " = ";
-    str += "eq";
-    str += " ";
-    str += std::to_string(result_r.second);
-    str += ", 0\n";
-    cnt++;
+    bool sign_l = filter(result_l.second);
+    bool sign_r = filter(result_r.second);
 
     str += "  %";
     str += std::to_string(cnt);
     str += " = ";
     str += "and";
-    str += " %";
-    str += std::to_string(cnt - 2);
-    str += ", %";
-    str += std::to_string(cnt - 1);
+    str += " ";
+
+    if (sign_l) {
+      str += std::to_string(result_l.second);
+    } else if (!sign_l && sign_r) {
+      str += "%";
+      str += std::to_string(cnt - 1);
+    } else {
+      str += "%";
+      str += std::to_string(cnt - 2);
+    }
+
+    str += ", ";
+
+    if (sign_r) {
+      str += std::to_string(result_r.second);
+    } else {
+      str += "%";
+      str += std::to_string(cnt - 1);
+    }
+
     str += "\n";
     cnt++;
 
   } else if (result_l.first) {
+    bool sign_l = filter(result_l.second);
+
     str += "  %";
     str += std::to_string(cnt);
     str += " = ";
     str += "and";
     str += " ";
-    str += std::to_string(result_l.second);
+
+    if (sign_l) {
+      str += std::to_string(result_l.second);
+    } else {
+      str += "%";
+      str += std::to_string(cnt - 1);
+    }
+
     str += ", %";
     str += std::to_string(cnt_r);
     str += "\n";
     cnt++;
 
   } else if (result_r.first) {
+    bool sign_r = filter(result_r.second);
+
     str += "  %";
     str += std::to_string(cnt);
     str += " = ";
-    str += "and";
+    str += "or";
     str += " %";
     str += std::to_string(cnt_l);
     str += ", ";
-    str += std::to_string(result_r.second);
+
+    if (sign_r) {
+      str += std::to_string(result_r.second);
+    } else {
+      str += "%";
+      str += std::to_string(cnt - 1);
+    }
+
     str += "\n";
     cnt++;
 
@@ -613,23 +650,6 @@ void LOrExpWithOpAST::Dump() const {
   std::cout << "LOrExpOpAST { " << lOrOp << " }";
   lAndExp->Dump();
   std::cout << " }";
-}
-
-bool filter(int input) {
-  if (input == 0 || input == 1) {
-    return true;
-  }
-
-  str += "  %";
-  str += std::to_string(cnt);
-  str += " = ";
-  str += "eq";
-  str += " ";
-  str += std::to_string(input);
-  str += ", 0\n";
-  cnt++;
-
-  return false;
 }
 
 std::pair<bool, int> LOrExpWithOpAST::Output() const {
@@ -672,18 +692,29 @@ std::pair<bool, int> LOrExpWithOpAST::Output() const {
     cnt++;
 
   } else if (result_l.first) {
+    bool sign_l = filter(result_l.second);
+
     str += "  %";
     str += std::to_string(cnt);
     str += " = ";
     str += "or";
     str += " ";
-    str += std::to_string(result_l.second);
+
+    if (sign_l) {
+      str += std::to_string(result_l.second);
+    } else {
+      str += "%";
+      str += std::to_string(cnt - 1);
+    }
+
     str += ", %";
     str += std::to_string(cnt_r);
     str += "\n";
     cnt++;
 
   } else if (result_r.first) {
+    bool sign_r = filter(result_r.second);
+
     str += "  %";
     str += std::to_string(cnt);
     str += " = ";
@@ -691,7 +722,14 @@ std::pair<bool, int> LOrExpWithOpAST::Output() const {
     str += " %";
     str += std::to_string(cnt_l);
     str += ", ";
-    str += std::to_string(result_r.second);
+
+    if (sign_r) {
+      str += std::to_string(result_r.second);
+    } else {
+      str += "%";
+      str += std::to_string(cnt - 1);
+    }
+
     str += "\n";
     cnt++;
 
