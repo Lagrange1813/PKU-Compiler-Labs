@@ -6,12 +6,11 @@
 
 extern std::string str;
 extern int cnt;
+extern bool filter(int input);
 
 // 所有 AST 的基类
 class BaseAST {
  public:
-  bool ret = false;
-
   virtual ~BaseAST() = default;
 
   virtual void Dump() const = 0;
@@ -112,8 +111,6 @@ class StmtAST : public BaseAST {
   }
 
   std::pair<bool, int> Output() const override {
-    exp->ret = true;
-
     std::pair<bool, int> result = exp->Output();
 
     if (result.first) {
@@ -141,9 +138,7 @@ class ExpAST : public BaseAST {
   }
 
   std::pair<bool, int> Output() const override {
-    std::pair<bool, int> result = lOrExp->Output();
-
-    return result;
+    return lOrExp->Output();
   }
 };
 
@@ -158,9 +153,7 @@ class PrimaryExpWithBrAST : public BaseAST {
   }
 
   std::pair<bool, int> Output() const override {
-    exp->Output();
-
-    return std::pair<bool, int>(false, 0);
+    return exp->Output();
   }
 };
 
@@ -190,8 +183,7 @@ class UnaryExpAST : public BaseAST {
   }
 
   std::pair<bool, int> Output() const override {
-    std::pair<bool, int> result = primaryExp->Output();
-    return result;
+    return primaryExp->Output();
   }
 };
 
@@ -225,6 +217,8 @@ class UnaryExpWithOpAST : public BaseAST {
         str += std::to_string(result.second);
         str += "\n";
         cnt++;
+      } else if (unaryOp == '+') {
+        return std::pair<bool, int>(true, result.second);
       }
     } else {
       if (unaryOp == '!') {
@@ -657,11 +651,29 @@ class LAndExpWithOpAST : public BaseAST {
       str += "  %";
       str += std::to_string(cnt);
       str += " = ";
-      str += "and";
+      str += "eq";
       str += " ";
       str += std::to_string(result_l.second);
-      str += ", ";
+      str += ", 0\n";
+      cnt++;
+
+      str += "  %";
+      str += std::to_string(cnt);
+      str += " = ";
+      str += "eq";
+      str += " ";
       str += std::to_string(result_r.second);
+      str += ", 0\n";
+      cnt++;
+
+      str += "  %";
+      str += std::to_string(cnt);
+      str += " = ";
+      str += "and";
+      str += " %";
+      str += std::to_string(cnt - 2);
+      str += ", %";
+      str += std::to_string(cnt - 1);
       str += "\n";
       cnt++;
 
@@ -741,14 +753,25 @@ class LOrExpWithOpAST : public BaseAST {
     int cnt_r = cnt - 1;
 
     if (result_l.first && result_r.first) {
+      bool sign_l = filter(result_l.second);
+      bool sign_r = filter(result_r.second);
+
       str += "  %";
       str += std::to_string(cnt);
       str += " = ";
       str += "or";
       str += " ";
-      str += std::to_string(result_l.second);
+
+      if (sign_l) {
+        str += std::to_string(result_l.second);
+      } else if (!sign_l && sign_r) {
+        str += std::to_string(cnt - 1);
+      } else {
+        str += std::to_string(cnt - 2);
+      }
+
       str += ", ";
-      str += std::to_string(result_r.second);
+      str += sign_r ? std::to_string(result_r.second) : std::to_string(cnt - 1);
       str += "\n";
       cnt++;
 
