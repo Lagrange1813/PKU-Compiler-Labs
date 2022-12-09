@@ -3,10 +3,10 @@
 #include <string>
 #include <unordered_map>
 #include "koopa.h"
+# include <memory>
 
 extern std::string str;
 extern int cnt;
-extern bool filter(int input);
 
 // 所有 AST 的基类
 class BaseAST {
@@ -14,7 +14,6 @@ class BaseAST {
   virtual ~BaseAST() = default;
 
   virtual void Dump() const = 0;
-
   virtual std::pair<bool, int> Output() const = 0;
 };
 
@@ -22,16 +21,8 @@ class CompUnitAST : public BaseAST {
  public:
   std::unique_ptr<BaseAST> func_def;
 
-  void Dump() const override {
-    std::cout << "CompUnitAST { ";
-    func_def->Dump();
-    std::cout << " }";
-  }
-
-  std::pair<bool, int> Output() const override {
-    func_def->Output();
-    return std::pair<bool, int>(false, 0);
-  }
+  void Dump() const override;
+  std::pair<bool, int> Output() const override;
 };
 
 class FuncDefAST : public BaseAST {
@@ -40,151 +31,64 @@ class FuncDefAST : public BaseAST {
   std::string ident;
   std::unique_ptr<BaseAST> block;
 
-  void Dump() const override {
-    std::cout << "FuncDefAST { ";
-    func_type->Dump();
-    std::cout << ", " << ident << ", ";
-    block->Dump();
-    std::cout << " }";
-  }
-
-  std::pair<bool, int> Output() const override {
-    str += "fun ";
-    str += "@";
-    str += ident;
-    str += "(): ";
-    func_type->Output();
-    block->Output();
-
-    return std::pair<bool, int>(false, 0);
-  }
+  void Dump() const override;
+  std::pair<bool, int> Output() const override;
 };
 
 class FuncTypeAST : public BaseAST {
  public:
   std::string type;
 
-  void Dump() const override {
-    std::cout << "FuncTypeAST { ";
-    std::cout << type;
-    std::cout << " }";
-  }
-
-  std::pair<bool, int> Output() const override {
-    if (type == "int") {
-      str += "i32";
-      str += " ";
-    }
-
-    return std::pair<bool, int>(false, 0);
-  }
+  void Dump() const override;
+  std::pair<bool, int> Output() const override;
 };
 
 class BlockAST : public BaseAST {
  public:
   std::unique_ptr<BaseAST> stmt;
 
-  void Dump() const override {
-    std::cout << "BlockAST { ";
-    stmt->Dump();
-    std::cout << " }";
-  }
-
-  std::pair<bool, int> Output() const override {
-    str += "{\n";
-    str += "\%entry:\n";
-    stmt->Output();
-    str += "}";
-
-    return std::pair<bool, int>(false, 0);
-  }
+  void Dump() const override;
+  std::pair<bool, int> Output() const override;
 };
 
 class StmtAST : public BaseAST {
  public:
   std::unique_ptr<BaseAST> exp;
 
-  void Dump() const override {
-    std::cout << "StmtAST { ";
-    exp->Dump();
-    std::cout << " }";
-  }
-
-  std::pair<bool, int> Output() const override {
-    std::pair<bool, int> result = exp->Output();
-
-    if (result.first) {
-      str += "  ret ";
-      str += std::to_string(result.second);
-      str += "\n";
-    } else {
-      str += "  ret %";
-      str += std::to_string(cnt - 1);
-      str += "\n";
-    }
-
-    return std::pair<bool, int>(false, 0);
-  }
+  void Dump() const override;
+  std::pair<bool, int> Output() const override;
 };
 
 class ExpAST : public BaseAST {
  public:
   std::unique_ptr<BaseAST> lOrExp;
 
-  void Dump() const override {
-    std::cout << "ExpAST { ";
-    lOrExp->Dump();
-    std::cout << " }";
-  }
-
-  std::pair<bool, int> Output() const override {
-    return lOrExp->Output();
-  }
+  void Dump() const override;
+  std::pair<bool, int> Output() const override;
 };
 
 class PrimaryExpWithBrAST : public BaseAST {
  public:
   std::unique_ptr<BaseAST> exp;
 
-  void Dump() const override {
-    std::cout << "PrimaryExpWithBrAST { ";
-    exp->Dump();
-    std::cout << " }";
-  }
-
-  std::pair<bool, int> Output() const override {
-    return exp->Output();
-  }
+  void Dump() const override;
+  std::pair<bool, int> Output() const override;
 };
 
 class PrimaryExpWithNumAST : public BaseAST {
  public:
   int number;
 
-  void Dump() const override {
-    std::cout << "PrimaryExpWithNumAST { ";
-    std::cout << number;
-    std::cout << " }";
-  }
-
-  std::pair<bool, int> Output() const override {
-    return std::pair<bool, int>(true, number);
-  }
+  void Dump() const override;
+  std::pair<bool, int> Output() const override;
 };
 
 class UnaryExpAST : public BaseAST {
  public:
   std::unique_ptr<BaseAST> primaryExp;
 
-  void Dump() const override {
-    std::cout << "UnaryExpAST { ";
-    primaryExp->Dump();
-    std::cout << " }";
-  }
-
-  std::pair<bool, int> Output() const override {
-    return primaryExp->Output();
-  }
+  void Dump() const override;
+  std::pair<bool, int> Output() const override;
 };
 
 class UnaryExpWithOpAST : public BaseAST {
@@ -192,67 +96,16 @@ class UnaryExpWithOpAST : public BaseAST {
   char unaryOp;
   std::unique_ptr<BaseAST> unaryExp;
 
-  void Dump() const override {
-    std::cout << "UnaryExpWithOpAST { ";
-    std::cout << "UnaryOpAST { " << unaryOp << " }";
-    unaryExp->Dump();
-    std::cout << " }";
-  }
-
-  std::pair<bool, int> Output() const override {
-    std::pair<bool, int> result = unaryExp->Output();
-
-    if (result.first) {
-      if (unaryOp == '!') {
-        str += "  %";
-        str += std::to_string(cnt);
-        str += " = eq ";
-        str += std::to_string(result.second);
-        str += ", 0\n";
-        cnt++;
-      } else if (unaryOp == '-') {
-        str += "  %";
-        str += std::to_string(cnt);
-        str += " = sub 0, ";
-        str += std::to_string(result.second);
-        str += "\n";
-        cnt++;
-      } else if (unaryOp == '+') {
-        return std::pair<bool, int>(true, result.second);
-      }
-    } else {
-      if (unaryOp == '!') {
-        str += "  %";
-        str += std::to_string(cnt);
-        str += " = eq %";
-        str += std::to_string(cnt - 1);
-        str += ", 0\n";
-        cnt++;
-      } else if (unaryOp == '-') {
-        str += "  %";
-        str += std::to_string(cnt);
-        str += " = sub 0, %";
-        str += std::to_string(cnt - 1);
-        str += "\n";
-        cnt++;
-      }
-    }
-
-    return std::pair<bool, int>(false, 0);
-  }
+  void Dump() const override;
+  std::pair<bool, int> Output() const override;
 };
 
 class MulExpAST : public BaseAST {
  public:
   std::unique_ptr<BaseAST> unaryExp;
 
-  void Dump() const override {
-    std::cout << "MulExpAST { ";
-    unaryExp->Dump();
-    std::cout << " }";
-  }
-
-  std::pair<bool, int> Output() const override { return unaryExp->Output(); }
+  void Dump() const override;
+  std::pair<bool, int> Output() const override;
 };
 
 class MulExpWithOpAST : public BaseAST {
@@ -261,91 +114,16 @@ class MulExpWithOpAST : public BaseAST {
   char mulOp;
   std::unique_ptr<BaseAST> unaryExp;
 
-  void Dump() const override {
-    std::cout << "MulExpWithOpAST { ";
-    mulExp->Dump();
-    std::cout << "MulExpOpAST { " << mulOp << " }";
-    unaryExp->Dump();
-    std::cout << " }";
-  }
-
-  std::pair<bool, int> Output() const override {
-    std::pair<bool, int> result_l = mulExp->Output();
-    int cnt_l = cnt - 1;
-
-    std::pair<bool, int> result_r = unaryExp->Output();
-    int cnt_r = cnt - 1;
-
-    std::unordered_map<char, std::string> dic = {
-        {'*', "mul"},
-        {'/', "div"},
-        {'%', "mod"},
-    };
-
-    if (result_l.first && result_r.first) {
-      str += "  %";
-      str += std::to_string(cnt);
-      str += " = ";
-      str += dic[mulOp];
-      str += " ";
-      str += std::to_string(result_l.second);
-      str += ", ";
-      str += std::to_string(result_r.second);
-      str += "\n";
-      cnt++;
-
-    } else if (result_l.first) {
-      str += "  %";
-      str += std::to_string(cnt);
-      str += " = ";
-      str += dic[mulOp];
-      str += " ";
-      str += std::to_string(result_l.second);
-      str += ", %";
-      str += std::to_string(cnt_r);
-      str += "\n";
-      cnt++;
-
-    } else if (result_r.first) {
-      str += "  %";
-      str += std::to_string(cnt);
-      str += " = ";
-      str += dic[mulOp];
-      str += " %";
-      str += std::to_string(cnt_l);
-      str += ", ";
-      str += std::to_string(result_r.second);
-      str += "\n";
-      cnt++;
-
-    } else {
-      str += "  %";
-      str += std::to_string(cnt);
-      str += " = ";
-      str += dic[mulOp];
-      str += " %";
-      str += std::to_string(cnt_l);
-      str += ", %";
-      str += std::to_string(cnt_r);
-      str += "\n";
-      cnt++;
-    }
-
-    return std::pair<bool, int>(false, 0);
-  }
+  void Dump() const override;
+  std::pair<bool, int> Output() const override;
 };
 
 class AddExpAST : public BaseAST {
  public:
   std::unique_ptr<BaseAST> mulExp;
 
-  void Dump() const override {
-    std::cout << "AddExpAST { ";
-    mulExp->Dump();
-    std::cout << " }";
-  }
-
-  std::pair<bool, int> Output() const override { return mulExp->Output(); }
+  void Dump() const override;
+  std::pair<bool, int> Output() const override;
 };
 
 class AddExpWithOpAST : public BaseAST {
@@ -354,90 +132,16 @@ class AddExpWithOpAST : public BaseAST {
   char addOp;
   std::unique_ptr<BaseAST> mulExp;
 
-  void Dump() const override {
-    std::cout << "AddExpWithOpAST { ";
-    addExp->Dump();
-    std::cout << "AddExpOpAST { " << addOp << " }";
-    mulExp->Dump();
-    std::cout << " }";
-  }
-
-  std::pair<bool, int> Output() const override {
-    std::pair<bool, int> result_l = addExp->Output();
-    int cnt_l = cnt - 1;
-
-    std::pair<bool, int> result_r = mulExp->Output();
-    int cnt_r = cnt - 1;
-
-    std::unordered_map<char, std::string> dic = {
-        {'+', "add"},
-        {'-', "sub"},
-    };
-
-    if (result_l.first && result_r.first) {
-      str += "  %";
-      str += std::to_string(cnt);
-      str += " = ";
-      str += dic[addOp];
-      str += " ";
-      str += std::to_string(result_l.second);
-      str += ", ";
-      str += std::to_string(result_r.second);
-      str += "\n";
-      cnt++;
-
-    } else if (result_l.first) {
-      str += "  %";
-      str += std::to_string(cnt);
-      str += " = ";
-      str += dic[addOp];
-      str += " ";
-      str += std::to_string(result_l.second);
-      str += ", %";
-      str += std::to_string(cnt_r);
-      str += "\n";
-      cnt++;
-
-    } else if (result_r.first) {
-      str += "  %";
-      str += std::to_string(cnt);
-      str += " = ";
-      str += dic[addOp];
-      str += " %";
-      str += std::to_string(cnt_l);
-      str += ", ";
-      str += std::to_string(result_r.second);
-      str += "\n";
-      cnt++;
-
-    } else {
-      str += "  %";
-      str += std::to_string(cnt);
-      str += " = ";
-      str += dic[addOp];
-      str += " %";
-      str += std::to_string(cnt_l);
-      str += ", %";
-      str += std::to_string(cnt_r);
-      str += "\n";
-      cnt++;
-    }
-
-    return std::pair<bool, int>(false, 0);
-  }
+  void Dump() const override;
+  std::pair<bool, int> Output() const override;
 };
 
 class RelExpAST : public BaseAST {
  public:
   std::unique_ptr<BaseAST> addExp;
 
-  void Dump() const override {
-    std::cout << "RelExpAST { ";
-    addExp->Dump();
-    std::cout << " }";
-  }
-
-  std::pair<bool, int> Output() const override { return addExp->Output(); }
+  void Dump() const override;
+  std::pair<bool, int> Output() const override;
 };
 
 class RelExpWithOpAST : public BaseAST {
@@ -446,92 +150,16 @@ class RelExpWithOpAST : public BaseAST {
   std::string relOp;
   std::unique_ptr<BaseAST> addExp;
 
-  void Dump() const override {
-    std::cout << "RelExpWithOpAST { ";
-    relExp->Dump();
-    std::cout << "RelExpOpAST { " << relOp << " }";
-    addExp->Dump();
-    std::cout << " }";
-  }
-
-  std::pair<bool, int> Output() const override {
-    std::pair<bool, int> result_l = relExp->Output();
-    int cnt_l = cnt - 1;
-
-    std::pair<bool, int> result_r = addExp->Output();
-    int cnt_r = cnt - 1;
-
-    std::unordered_map<std::string, std::string> dic = {
-        {"<", "lt"},
-        {">", "gt"},
-        {"<=", "le"},
-        {">=", "ge"},
-    };
-
-    if (result_l.first && result_r.first) {
-      str += "  %";
-      str += std::to_string(cnt);
-      str += " = ";
-      str += dic[relOp];
-      str += " ";
-      str += std::to_string(result_l.second);
-      str += ", ";
-      str += std::to_string(result_r.second);
-      str += "\n";
-      cnt++;
-
-    } else if (result_l.first) {
-      str += "  %";
-      str += std::to_string(cnt);
-      str += " = ";
-      str += dic[relOp];
-      str += " ";
-      str += std::to_string(result_l.second);
-      str += ", %";
-      str += std::to_string(cnt_r);
-      str += "\n";
-      cnt++;
-
-    } else if (result_r.first) {
-      str += "  %";
-      str += std::to_string(cnt);
-      str += " = ";
-      str += dic[relOp];
-      str += " %";
-      str += std::to_string(cnt_l);
-      str += ", ";
-      str += std::to_string(result_r.second);
-      str += "\n";
-      cnt++;
-
-    } else {
-      str += "  %";
-      str += std::to_string(cnt);
-      str += " = ";
-      str += dic[relOp];
-      str += " %";
-      str += std::to_string(cnt_l);
-      str += ", %";
-      str += std::to_string(cnt_r);
-      str += "\n";
-      cnt++;
-    }
-
-    return std::pair<bool, int>(false, 0);
-  }
+  void Dump() const override;
+  std::pair<bool, int> Output() const override;
 };
 
 class EqExpAST : public BaseAST {
  public:
   std::unique_ptr<BaseAST> relExp;
 
-  void Dump() const override {
-    std::cout << "EqExpAST { ";
-    relExp->Dump();
-    std::cout << " }";
-  }
-
-  std::pair<bool, int> Output() const override { return relExp->Output(); }
+  void Dump() const override;
+  std::pair<bool, int> Output() const override;
 };
 
 class EqExpWithOpAST : public BaseAST {
@@ -540,90 +168,16 @@ class EqExpWithOpAST : public BaseAST {
   std::string eqOp;
   std::unique_ptr<BaseAST> relExp;
 
-  void Dump() const override {
-    std::cout << "EqExpWithOpAST { ";
-    eqExp->Dump();
-    std::cout << "EqExpOpAST { " << eqOp << " }";
-    relExp->Dump();
-    std::cout << " }";
-  }
-
-  std::pair<bool, int> Output() const override {
-    std::pair<bool, int> result_l = eqExp->Output();
-    int cnt_l = cnt - 1;
-
-    std::pair<bool, int> result_r = relExp->Output();
-    int cnt_r = cnt - 1;
-
-    std::unordered_map<std::string, std::string> dic = {
-        {"==", "eq"},
-        {"!=", "ne"},
-    };
-
-    if (result_l.first && result_r.first) {
-      str += "  %";
-      str += std::to_string(cnt);
-      str += " = ";
-      str += dic[eqOp];
-      str += " ";
-      str += std::to_string(result_l.second);
-      str += ", ";
-      str += std::to_string(result_r.second);
-      str += "\n";
-      cnt++;
-
-    } else if (result_l.first) {
-      str += "  %";
-      str += std::to_string(cnt);
-      str += " = ";
-      str += dic[eqOp];
-      str += " ";
-      str += std::to_string(result_l.second);
-      str += ", %";
-      str += std::to_string(cnt_r);
-      str += "\n";
-      cnt++;
-
-    } else if (result_r.first) {
-      str += "  %";
-      str += std::to_string(cnt);
-      str += " = ";
-      str += dic[eqOp];
-      str += " %";
-      str += std::to_string(cnt_l);
-      str += ", ";
-      str += std::to_string(result_r.second);
-      str += "\n";
-      cnt++;
-
-    } else {
-      str += "  %";
-      str += std::to_string(cnt);
-      str += " = ";
-      str += dic[eqOp];
-      str += " %";
-      str += std::to_string(cnt_l);
-      str += ", %";
-      str += std::to_string(cnt_r);
-      str += "\n";
-      cnt++;
-    }
-
-    return std::pair<bool, int>(false, 0);
-  }
+  void Dump() const override;
+  std::pair<bool, int> Output() const override;
 };
 
 class LAndExpAST : public BaseAST {
  public:
   std::unique_ptr<BaseAST> eqExp;
 
-  void Dump() const override {
-    std::cout << "LAndExpAST { ";
-    eqExp->Dump();
-    std::cout << " }";
-  }
-
-  std::pair<bool, int> Output() const override { return eqExp->Output(); }
+  void Dump() const override;
+  std::pair<bool, int> Output() const override;
 };
 
 class LAndExpWithOpAST : public BaseAST {
@@ -632,103 +186,16 @@ class LAndExpWithOpAST : public BaseAST {
   std::string lAndOp;
   std::unique_ptr<BaseAST> eqExp;
 
-  void Dump() const override {
-    std::cout << "EqExpWithOpAST { ";
-    lAndExp->Dump();
-    std::cout << "EqExpOpAST { " << lAndOp << " }";
-    eqExp->Dump();
-    std::cout << " }";
-  }
-
-  std::pair<bool, int> Output() const override {
-    std::pair<bool, int> result_l = lAndExp->Output();
-    int cnt_l = cnt - 1;
-
-    std::pair<bool, int> result_r = eqExp->Output();
-    int cnt_r = cnt - 1;
-
-    if (result_l.first && result_r.first) {
-      str += "  %";
-      str += std::to_string(cnt);
-      str += " = ";
-      str += "eq";
-      str += " ";
-      str += std::to_string(result_l.second);
-      str += ", 0\n";
-      cnt++;
-
-      str += "  %";
-      str += std::to_string(cnt);
-      str += " = ";
-      str += "eq";
-      str += " ";
-      str += std::to_string(result_r.second);
-      str += ", 0\n";
-      cnt++;
-
-      str += "  %";
-      str += std::to_string(cnt);
-      str += " = ";
-      str += "and";
-      str += " %";
-      str += std::to_string(cnt - 2);
-      str += ", %";
-      str += std::to_string(cnt - 1);
-      str += "\n";
-      cnt++;
-
-    } else if (result_l.first) {
-      str += "  %";
-      str += std::to_string(cnt);
-      str += " = ";
-      str += "and";
-      str += " ";
-      str += std::to_string(result_l.second);
-      str += ", %";
-      str += std::to_string(cnt_r);
-      str += "\n";
-      cnt++;
-
-    } else if (result_r.first) {
-      str += "  %";
-      str += std::to_string(cnt);
-      str += " = ";
-      str += "and";
-      str += " %";
-      str += std::to_string(cnt_l);
-      str += ", ";
-      str += std::to_string(result_r.second);
-      str += "\n";
-      cnt++;
-
-    } else {
-      str += "  %";
-      str += std::to_string(cnt);
-      str += " = ";
-      str += "and";
-      str += " %";
-      str += std::to_string(cnt_l);
-      str += ", %";
-      str += std::to_string(cnt_r);
-      str += "\n";
-      cnt++;
-    }
-
-    return std::pair<bool, int>(false, 0);
-  }
+  void Dump() const override;
+  std::pair<bool, int> Output() const override;
 };
 
 class LOrExpAST : public BaseAST {
  public:
   std::unique_ptr<BaseAST> lAndExp;
 
-  void Dump() const override {
-    std::cout << "LOrExpAST { ";
-    lAndExp->Dump();
-    std::cout << " }";
-  }
-
-  std::pair<bool, int> Output() const override { return lAndExp->Output(); }
+  void Dump() const override;
+  std::pair<bool, int> Output() const override;
 };
 
 class LOrExpWithOpAST : public BaseAST {
@@ -737,81 +204,6 @@ class LOrExpWithOpAST : public BaseAST {
   std::string lOrOp;
   std::unique_ptr<BaseAST> lAndExp;
 
-  void Dump() const override {
-    std::cout << "LOrExpWithOpAST { ";
-    lOrExp->Dump();
-    std::cout << "LOrExpOpAST { " << lOrOp << " }";
-    lAndExp->Dump();
-    std::cout << " }";
-  }
-
-  std::pair<bool, int> Output() const override {
-    std::pair<bool, int> result_l = lOrExp->Output();
-    int cnt_l = cnt - 1;
-
-    std::pair<bool, int> result_r = lAndExp->Output();
-    int cnt_r = cnt - 1;
-
-    if (result_l.first && result_r.first) {
-      bool sign_l = filter(result_l.second);
-      bool sign_r = filter(result_r.second);
-
-      str += "  %";
-      str += std::to_string(cnt);
-      str += " = ";
-      str += "or";
-      str += " ";
-
-      if (sign_l) {
-        str += std::to_string(result_l.second);
-      } else if (!sign_l && sign_r) {
-        str += std::to_string(cnt - 1);
-      } else {
-        str += std::to_string(cnt - 2);
-      }
-
-      str += ", ";
-      str += sign_r ? std::to_string(result_r.second) : std::to_string(cnt - 1);
-      str += "\n";
-      cnt++;
-
-    } else if (result_l.first) {
-      str += "  %";
-      str += std::to_string(cnt);
-      str += " = ";
-      str += "or";
-      str += " ";
-      str += std::to_string(result_l.second);
-      str += ", %";
-      str += std::to_string(cnt_r);
-      str += "\n";
-      cnt++;
-
-    } else if (result_r.first) {
-      str += "  %";
-      str += std::to_string(cnt);
-      str += " = ";
-      str += "or";
-      str += " %";
-      str += std::to_string(cnt_l);
-      str += ", ";
-      str += std::to_string(result_r.second);
-      str += "\n";
-      cnt++;
-
-    } else {
-      str += "  %";
-      str += std::to_string(cnt);
-      str += " = ";
-      str += "or";
-      str += " %";
-      str += std::to_string(cnt_l);
-      str += ", %";
-      str += std::to_string(cnt_r);
-      str += "\n";
-      cnt++;
-    }
-
-    return std::pair<bool, int>(false, 0);
-  }
+  void Dump() const override;
+  std::pair<bool, int> Output() const override;
 };
