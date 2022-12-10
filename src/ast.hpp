@@ -37,7 +37,7 @@ class DeclAST : public BaseAST {
 class ConstDeclAST : public BaseAST {
  public:
   std::string bType;
-  std::vector<std::unique_ptr<BaseAST>> constDefs;
+  std::vector<std::unique_ptr<BaseAST>> constDefList;
 
   void Dump() const override;
   std::pair<bool, int> Output() const override;
@@ -80,7 +80,7 @@ class FuncTypeAST : public BaseAST {
 
 class BlockAST : public BaseAST {
  public:
-  std::vector<std::unique_ptr<BaseAST>> blockItems;
+  std::vector<std::unique_ptr<BaseAST>> blockItemList;
 
   void Dump() const override;
   std::pair<bool, int> Output() const override;

@@ -24,7 +24,7 @@ std::pair<bool, int> DeclAST::Output() const {
 void ConstDeclAST::Dump() const {
   std::cout << "ConstDeclAST { ";
   std::cout << "BTypeAST { " << bType << "}";
-  for (auto &constDef: constDefs) {
+  for (auto &constDef: constDefList) {
     constDef->Dump();
   }
   std::cout << " }";
@@ -91,7 +91,7 @@ std::pair<bool, int> FuncTypeAST::Output() const {
 
 void BlockAST::Dump() const {
   std::cout << "BlockAST { ";
-  for (auto &blockItem: blockItems) {
+  for (auto &blockItem: blockItemList) {
     blockItem->Dump();
   }
   std::cout << " }";

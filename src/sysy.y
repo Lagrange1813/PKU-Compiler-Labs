@@ -36,6 +36,7 @@ using namespace std;
   std::string *str_val;
   int int_val;
   BaseAST *ast_val;
+  std::vector<std::unique_ptr<BaseAST>> *vec_val;
 }
 
 // lexer 返回的所有 token 种类的声明
@@ -47,10 +48,10 @@ using namespace std;
 // 非终结符的类型定义
 %type <ast_val> Decl ConstDecl ConstDef ConstInitVal   
 %type <ast_val> FuncDef FuncType
-%type <ast_val> Block BlockItems BlockItem Stmt 
+%type <ast_val> Block BlockItem Stmt 
 %type <ast_val> Exp LVal PrimaryExp UnaryExp MulExp AddExp RelExp EqExp LAndExp LOrExp ConstExp
 
-/* %type <vector<ast_val>> BlockItems */
+%type <vec_val> BlockItemList ConstDefList
 
 %type <int_val> Number
 
@@ -78,14 +79,28 @@ Decl
   ;
 
 ConstDecl
-  : CONST INT ConstDef ';' {
+  : CONST INT ConstDef ConstDefList ';' {
     auto ast = new ConstDeclAST();
     string * type = new string("int");
     ast->bType = *unique_ptr<string>(type);
-    ast->constDefs.push_back(unique_ptr<BaseAST>($3));
+    ast->constDefList.push_back(unique_ptr<BaseAST>($3));
+    vector<unique_ptr<BaseAST> > *vec = ($4);
+    for (auto it = vec->begin(); it != vec->end(); it++)
+      ast->constDefList.push_back(move(*it));
     $$ = ast;
   }
   ;
+
+ConstDefList
+  : {
+    vector<unique_ptr<BaseAST>> *vec = new vector<unique_ptr<BaseAST>>;
+    $$ = vec;
+  }
+  | ConstDefList ',' ConstDef {
+    vector<unique_ptr<BaseAST>> *vec = ($1);
+    vec->push_back(unique_ptr<BaseAST>($3));
+    $$ = vec;
+  }
 
 ConstDef
   : IDENT '=' ConstInitVal {
@@ -135,19 +150,24 @@ FuncType
   ;
 
 Block
-  : '{' BlockItems '}' {
+  : '{' BlockItemList '}' {
     auto ast = new BlockAST();
-    ast->blockItems.push_back(unique_ptr<BaseAST>($2));
+    vector<unique_ptr<BaseAST> > *vec = ($2);
+    for (auto it = vec->begin(); it != vec->end(); it++)
+      ast->blockItemList.push_back(move(*it));
     $$ = ast;
   }
   ;
 
-BlockItems
-  : BlockItem {
-    $$ = $1;
+BlockItemList
+  : {
+    vector<unique_ptr<BaseAST>> *vec = new vector<unique_ptr<BaseAST>>;
+    $$ = vec;
   }
-  | BlockItem BlockItems {
-    $$ = $1;
+  | BlockItemList BlockItem {
+    vector<unique_ptr<BaseAST>> *vec = ($1);
+    vec->push_back(unique_ptr<BaseAST>($2));
+    $$ = vec;
   }
 
 BlockItem
