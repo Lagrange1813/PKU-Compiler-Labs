@@ -11,6 +11,50 @@ std::pair<bool, int> CompUnitAST::Output() const {
   return std::pair<bool, int>(false, 0);
 }
 
+void DeclAST::Dump() const {
+  std::cout << "DeclAST { ";
+  constDecl->Dump();
+  std::cout << " }";
+}
+
+std::pair<bool, int> DeclAST::Output() const {
+  return std::pair<bool, int>(false, 0);
+}
+
+void ConstDeclAST::Dump() const {
+  std::cout << "ConstDeclAST { ";
+  std::cout << "BTypeAST { " << bType << "}";
+  for (auto &constDef: constDefs) {
+    constDef->Dump();
+  }
+  std::cout << " }";
+}
+
+std::pair<bool, int> ConstDeclAST::Output() const {
+  return std::pair<bool, int>(false, 0);
+}
+
+void ConstDefAST::Dump() const {
+  std::cout << "ConstDefAST { ";
+  std::cout << "Ident { " << ident << "}";
+  constInitVal->Dump();
+  std::cout << " }";
+}
+
+std::pair<bool, int> ConstDefAST::Output() const {
+  return std::pair<bool, int>(false, 0);
+}
+
+void ConstInitValAST::Dump() const {
+  std::cout << "ConstInitValAST { ";
+  constExp->Dump();
+  std::cout << " }";
+}
+
+std::pair<bool, int> ConstInitValAST::Output() const {
+  return std::pair<bool, int>(false, 0);
+}
+
 void FuncDefAST::Dump() const {
   std::cout << "FuncDefAST { ";
   func_type->Dump();
@@ -47,16 +91,38 @@ std::pair<bool, int> FuncTypeAST::Output() const {
 
 void BlockAST::Dump() const {
   std::cout << "BlockAST { ";
-  stmt->Dump();
+  for (auto &blockItem: blockItems) {
+    blockItem->Dump();
+  }
   std::cout << " }";
 }
 
 std::pair<bool, int> BlockAST::Output() const {
-  str += "{\n";
-  str += "\%entry:\n";
-  stmt->Output();
-  str += "}";
+  // str += "{\n";
+  // str += "\%entry:\n";
+  // stmt->Output();
+  // str += "}";
 
+  return std::pair<bool, int>(false, 0);
+}
+
+void BlockItemWithDeclAST::Dump() const {
+  std::cout << "BlockItemWithDeclAST { ";
+  decl->Dump();
+  std::cout << " }";
+}
+
+std::pair<bool, int> BlockItemWithDeclAST::Output() const {
+  return std::pair<bool, int>(false, 0);
+}
+
+void BlockItemWithStmtAST::Dump() const {
+  std::cout << "BlockItemWithStmtAST { ";
+  stmt->Dump();
+  std::cout << " }";
+}
+
+std::pair<bool, int> BlockItemWithStmtAST::Output() const {
   return std::pair<bool, int>(false, 0);
 }
 
@@ -92,6 +158,16 @@ std::pair<bool, int> ExpAST::Output() const {
   return lOrExp->Output();
 }
 
+void LValAST::Dump() const {
+  std::cout << "LValAST { ";
+  std::cout << ident;
+  std::cout << " }";
+}
+
+std::pair<bool, int> LValAST::Output() const {
+  return std::pair<bool, int>(false, 0);
+}
+
 void PrimaryExpWithBrAST::Dump() const {
   std::cout << "PrimaryExpWithBrAST { ";
   exp->Dump();
@@ -100,6 +176,16 @@ void PrimaryExpWithBrAST::Dump() const {
 
 std::pair<bool, int> PrimaryExpWithBrAST::Output() const {
   return exp->Output();
+}
+
+void PrimaryExpWithLValAST::Dump() const {
+  std::cout << "PrimaryExpWithLValAST { ";
+  lVal->Dump();
+  std::cout << " }";
+}
+
+std::pair<bool, int> PrimaryExpWithLValAST::Output() const {
+  return lVal->Output();
 }
 
 void PrimaryExpWithNumAST::Dump() const {
@@ -747,4 +833,14 @@ std::pair<bool, int> LOrExpWithOpAST::Output() const {
   }
 
   return std::pair<bool, int>(false, 0);
+}
+
+void ConstExpAST::Dump() const {
+  std::cout << "ConstExpAST { ";
+  exp->Dump();
+  std::cout << " }";
+}
+
+std::pair<bool, int> ConstExpAST::Output() const {
+  return exp->Output();
 }
