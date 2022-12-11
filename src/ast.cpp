@@ -1,5 +1,18 @@
 #include "ast.hpp"
 
+int cnt;
+std::unordered_map<std::string, int> table;
+
+void insertSymbol(const std::string& key, int value) {
+  table[key] = value;
+}
+
+int fetchSymbol(const std::string& key) {
+  if (table.find(key) == table.end())
+    return -1;
+  return table[key];
+}
+
 void CompUnitAST::Dump() const {
   std::cout << "CompUnitAST { ";
   func_def->Dump();
@@ -18,19 +31,22 @@ void DeclAST::Dump() const {
 }
 
 std::pair<bool, int> DeclAST::Output() const {
-  return std::pair<bool, int>(false, 0);
+  return constDecl->Output();
 }
 
 void ConstDeclAST::Dump() const {
   std::cout << "ConstDeclAST { ";
   std::cout << "BTypeAST { " << bType << "}";
-  for (auto &constDef: constDefList) {
+  for (auto& constDef : constDefList) {
     constDef->Dump();
   }
   std::cout << " }";
 }
 
 std::pair<bool, int> ConstDeclAST::Output() const {
+  for (auto& constDef : constDefList) {
+    constDef->Output();
+  }
   return std::pair<bool, int>(false, 0);
 }
 
@@ -42,6 +58,8 @@ void ConstDefAST::Dump() const {
 }
 
 std::pair<bool, int> ConstDefAST::Output() const {
+  std::pair<bool, int> result = constInitVal->Output();
+  insertSymbol(ident, result.second);
   return std::pair<bool, int>(false, 0);
 }
 
@@ -52,7 +70,8 @@ void ConstInitValAST::Dump() const {
 }
 
 std::pair<bool, int> ConstInitValAST::Output() const {
-  return std::pair<bool, int>(false, 0);
+  
+  return std::pair<bool, int>(true, 6);
 }
 
 void FuncDefAST::Dump() const {
@@ -91,17 +110,19 @@ std::pair<bool, int> FuncTypeAST::Output() const {
 
 void BlockAST::Dump() const {
   std::cout << "BlockAST { ";
-  for (auto &blockItem: blockItemList) {
+  for (auto& blockItem : blockItemList) {
     blockItem->Dump();
   }
   std::cout << " }";
 }
 
 std::pair<bool, int> BlockAST::Output() const {
-  // str += "{\n";
-  // str += "\%entry:\n";
-  // stmt->Output();
-  // str += "}";
+  str += "{\n";
+  str += "\%entry:\n";
+  for (auto& blockItem : blockItemList) {
+    blockItem->Output();
+  }
+  str += "}";
 
   return std::pair<bool, int>(false, 0);
 }
@@ -113,7 +134,7 @@ void BlockItemWithDeclAST::Dump() const {
 }
 
 std::pair<bool, int> BlockItemWithDeclAST::Output() const {
-  return std::pair<bool, int>(false, 0);
+  return decl->Output();
 }
 
 void BlockItemWithStmtAST::Dump() const {
@@ -123,7 +144,7 @@ void BlockItemWithStmtAST::Dump() const {
 }
 
 std::pair<bool, int> BlockItemWithStmtAST::Output() const {
-  return std::pair<bool, int>(false, 0);
+  return stmt->Output();
 }
 
 void StmtAST::Dump() const {
@@ -165,7 +186,8 @@ void LValAST::Dump() const {
 }
 
 std::pair<bool, int> LValAST::Output() const {
-  return std::pair<bool, int>(false, 0);
+  int val = fetchSymbol(ident);
+  return std::pair<bool, int>(true, val);
 }
 
 void PrimaryExpWithBrAST::Dump() const {

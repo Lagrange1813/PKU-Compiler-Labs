@@ -1,13 +1,12 @@
 #pragma once
 #include <iostream>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <memory>
 #include "koopa.h"
 
 extern std::string str;
-extern int cnt;
 
 // 所有 AST 的基类
 class BaseAST {

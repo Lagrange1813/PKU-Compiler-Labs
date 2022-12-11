@@ -57,12 +57,12 @@ typedef int koopa_raw_file_t;
 ///
 /// Koopa IR program.
 ///
-typedef const void *koopa_program_t;
+typedef const void* koopa_program_t;
 
 ///
 /// Raw program builder.
 ///
-typedef void *koopa_raw_program_builder_t;
+typedef void* koopa_raw_program_builder_t;
 
 ///
 /// Kind of raw slice item.
@@ -90,7 +90,7 @@ typedef uint32_t koopa_raw_slice_item_kind_t;
 ///
 typedef struct {
   /// Buffer of slice items.
-  const void **buffer;
+  const void** buffer;
   /// Length of slice.
   uint32_t len;
   /// Kind of slice items.
@@ -120,15 +120,15 @@ typedef struct koopa_raw_type_kind {
   koopa_raw_type_tag_t tag;
   union {
     struct {
-      const struct koopa_raw_type_kind *base;
+      const struct koopa_raw_type_kind* base;
       size_t len;
     } array;
     struct {
-      const struct koopa_raw_type_kind *base;
+      const struct koopa_raw_type_kind* base;
     } pointer;
     struct {
       koopa_raw_slice_t params;
-      const struct koopa_raw_type_kind *ret;
+      const struct koopa_raw_type_kind* ret;
     } function;
   } data;
 } koopa_raw_type_kind_t;
@@ -136,7 +136,7 @@ typedef struct koopa_raw_type_kind {
 ///
 /// A raw Koopa type.
 ///
-typedef const koopa_raw_type_kind_t *koopa_raw_type_t;
+typedef const koopa_raw_type_kind_t* koopa_raw_type_t;
 
 ///
 /// A raw Koopa program.
@@ -155,7 +155,7 @@ typedef struct {
   /// Type of function.
   koopa_raw_type_t ty;
   /// Name of function.
-  const char *name;
+  const char* name;
   /// Parameters.
   koopa_raw_slice_t params;
   /// Basic blocks, empty if is a function declaration.
@@ -165,14 +165,14 @@ typedef struct {
 ///
 /// A raw Koopa function.
 ///
-typedef const koopa_raw_function_data_t *koopa_raw_function_t;
+typedef const koopa_raw_function_data_t* koopa_raw_function_t;
 
 ///
 /// Data of raw Koopa basic block.
 ///
 typedef struct {
   /// Name of basic block, null if no name.
-  const char *name;
+  const char* name;
   /// Parameters.
   koopa_raw_slice_t params;
   /// Values that this basic block is used by.
@@ -184,7 +184,7 @@ typedef struct {
 ///
 /// A raw Koopa basic block.
 ///
-typedef const koopa_raw_basic_block_data_t *koopa_raw_basic_block_t;
+typedef const koopa_raw_basic_block_data_t* koopa_raw_basic_block_t;
 
 struct koopa_raw_value_data;
 
@@ -196,7 +196,7 @@ typedef struct koopa_raw_value_data koopa_raw_value_data_t;
 ///
 /// A raw Koopa value.
 ///
-typedef const koopa_raw_value_data_t *koopa_raw_value_t;
+typedef const koopa_raw_value_data_t* koopa_raw_value_t;
 
 ///
 /// Raw integer constant.
@@ -444,7 +444,7 @@ struct koopa_raw_value_data {
   /// Type of value.
   koopa_raw_type_t ty;
   /// Name of value, null if no name.
-  const char *name;
+  const char* name;
   /// Values that this value is used by.
   koopa_raw_slice_t used_by;
   /// Kind of value.
@@ -457,8 +457,8 @@ struct koopa_raw_value_data {
 ///
 /// Returns the error code.
 ///
-koopa_error_code_t koopa_parse_from_file(const char *path,
-                                         koopa_program_t *program);
+koopa_error_code_t koopa_parse_from_file(const char* path,
+                                         koopa_program_t* program);
 
 ///
 /// Parses text-form Koopa IR program from the given string.
@@ -466,8 +466,8 @@ koopa_error_code_t koopa_parse_from_file(const char *path,
 ///
 /// Returns the error code.
 ///
-koopa_error_code_t koopa_parse_from_string(const char *str,
-                                           koopa_program_t *program);
+koopa_error_code_t koopa_parse_from_string(const char* str,
+                                           koopa_program_t* program);
 
 ///
 /// Parses text-form Koopa IR program from the standard input.
@@ -475,7 +475,7 @@ koopa_error_code_t koopa_parse_from_string(const char *str,
 ///
 /// Returns the error code.
 ///
-koopa_error_code_t koopa_parse_from_stdin(koopa_program_t *program);
+koopa_error_code_t koopa_parse_from_stdin(koopa_program_t* program);
 
 ///
 /// Parses text-form Koopa IR program from the given
@@ -485,7 +485,7 @@ koopa_error_code_t koopa_parse_from_stdin(koopa_program_t *program);
 /// Returns the error code.
 ///
 koopa_error_code_t koopa_parse_from_raw(koopa_raw_file_t file,
-                                        koopa_program_t *program);
+                                        koopa_program_t* program);
 
 ///
 /// Deletes the given program.
@@ -501,7 +501,7 @@ void koopa_delete_program(koopa_program_t program);
 /// Returns the error code.
 ///
 koopa_error_code_t koopa_dump_to_file(koopa_program_t program,
-                                      const char *path);
+                                      const char* path);
 
 ///
 /// Generates a null-terminated string of text-form Koopa IR program
@@ -511,7 +511,8 @@ koopa_error_code_t koopa_dump_to_file(koopa_program_t program,
 /// Returns the error code.
 ///
 koopa_error_code_t koopa_dump_to_string(koopa_program_t program,
-                                        char *buffer, size_t *len);
+                                        char* buffer,
+                                        size_t* len);
 
 ///
 /// Generates text-form Koopa IR program to the standard output.
@@ -535,7 +536,7 @@ koopa_error_code_t koopa_dump_to_raw(koopa_program_t program,
 /// Returns the error code.
 ///
 koopa_error_code_t koopa_dump_llvm_to_file(koopa_program_t program,
-                                           const char *path);
+                                           const char* path);
 
 ///
 /// Generates a null-terminated string of LLVM IR to the given buffer.
@@ -545,7 +546,8 @@ koopa_error_code_t koopa_dump_llvm_to_file(koopa_program_t program,
 /// Returns the error code.
 ///
 koopa_error_code_t koopa_dump_llvm_to_string(koopa_program_t program,
-                                             char *buffer, size_t *len);
+                                             char* buffer,
+                                             size_t* len);
 
 ///
 /// Generates LLVM IR to the standard output.
@@ -582,7 +584,8 @@ void koopa_delete_raw_program_builder(koopa_raw_program_builder_t builder);
 /// not be modified manually.
 ///
 koopa_raw_program_t koopa_build_raw_program(
-    koopa_raw_program_builder_t builder, koopa_program_t program);
+    koopa_raw_program_builder_t builder,
+    koopa_program_t program);
 
 ///
 /// Generates the given raw program to the Koopa IR program.
@@ -591,7 +594,8 @@ koopa_raw_program_t koopa_build_raw_program(
 /// Returns the error code.
 ///
 koopa_error_code_t koopa_generate_raw_to_koopa(
-    const koopa_raw_program_t *raw, koopa_program_t *program);
+    const koopa_raw_program_t* raw,
+    koopa_program_t* program);
 
 #ifdef __cplusplus
 }  // extern "C"
