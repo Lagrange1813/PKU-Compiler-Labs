@@ -1,10 +1,10 @@
 #pragma once
+#include <cassert>
 #include <iostream>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <cassert>
 #include "koopa.h"
 
 extern std::string str;

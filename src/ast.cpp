@@ -895,18 +895,18 @@ int search(const ConstExpAST* constExp) {
 
 int search(const ExpAST* exp) {
   auto lOrExp = exp->lOrExp.get();
-  if (typeid(*lOrExp) == typeid(LOrExpAST)) 
+  if (typeid(*lOrExp) == typeid(LOrExpAST))
     return search((LOrExpAST*)lOrExp);
-  else if (typeid(*lOrExp) == typeid(LOrExpWithOpAST)) 
+  else if (typeid(*lOrExp) == typeid(LOrExpWithOpAST))
     return search((LOrExpWithOpAST*)lOrExp);
   return 0;
 }
 
 int search(const LOrExpAST* lOrExp) {
   auto lAndExp = lOrExp->lAndExp.get();
-  if (typeid(*lAndExp) == typeid(LAndExpAST)) 
+  if (typeid(*lAndExp) == typeid(LAndExpAST))
     return search((LAndExpAST*)lAndExp);
-  else if (typeid(*lAndExp) == typeid(LAndExpWithOpAST)) 
+  else if (typeid(*lAndExp) == typeid(LAndExpWithOpAST))
     return search((LAndExpWithOpAST*)lAndExp);
   return 0;
 }
@@ -914,26 +914,26 @@ int search(const LOrExpAST* lOrExp) {
 int search(const LOrExpWithOpAST* lOrExp) {
   int lhs = 0;
   auto exp_l = lOrExp->lOrExp.get();
-  if (typeid(*exp_l) == typeid(LOrExpAST)) 
+  if (typeid(*exp_l) == typeid(LOrExpAST))
     lhs = search((LOrExpAST*)exp_l);
-  else if (typeid(*exp_l) == typeid(LOrExpWithOpAST)) 
+  else if (typeid(*exp_l) == typeid(LOrExpWithOpAST))
     lhs = search((LOrExpWithOpAST*)exp_l);
 
   int rhs = 0;
   auto exp_r = lOrExp->lAndExp.get();
-  if (typeid(*exp_r) == typeid(LAndExpAST)) 
+  if (typeid(*exp_r) == typeid(LAndExpAST))
     rhs = search((LAndExpAST*)exp_r);
-  else if (typeid(*exp_r) == typeid(LAndExpWithOpAST)) 
+  else if (typeid(*exp_r) == typeid(LAndExpWithOpAST))
     rhs = search((LAndExpWithOpAST*)exp_r);
-  
+
   return lhs || rhs;
 }
 
 int search(const LAndExpAST* lAndExp) {
   auto eqExp = lAndExp->eqExp.get();
-  if (typeid(*eqExp) == typeid(EqExpAST)) 
+  if (typeid(*eqExp) == typeid(EqExpAST))
     return search((EqExpAST*)eqExp);
-  else if (typeid(*eqExp) == typeid(EqExpWithOpAST)) 
+  else if (typeid(*eqExp) == typeid(EqExpWithOpAST))
     return search((EqExpWithOpAST*)eqExp);
   return 0;
 }
@@ -941,26 +941,26 @@ int search(const LAndExpAST* lAndExp) {
 int search(const LAndExpWithOpAST* lAndExp) {
   int lhs = 0;
   auto exp_l = lAndExp->lAndExp.get();
-  if (typeid(*exp_l) == typeid(LAndExpAST)) 
+  if (typeid(*exp_l) == typeid(LAndExpAST))
     lhs = search((LAndExpAST*)exp_l);
-  else if (typeid(*exp_l) == typeid(LAndExpWithOpAST)) 
+  else if (typeid(*exp_l) == typeid(LAndExpWithOpAST))
     lhs = search((LAndExpWithOpAST*)exp_l);
 
   int rhs = 0;
   auto exp_r = lAndExp->eqExp.get();
-  if (typeid(*exp_r) == typeid(EqExpAST)) 
+  if (typeid(*exp_r) == typeid(EqExpAST))
     rhs = search((EqExpAST*)exp_r);
-  else if (typeid(*exp_r) == typeid(EqExpWithOpAST)) 
+  else if (typeid(*exp_r) == typeid(EqExpWithOpAST))
     rhs = search((EqExpWithOpAST*)exp_r);
-  
+
   return lhs && rhs;
 }
 
 int search(const EqExpAST* eqExp) {
   auto relExp = eqExp->relExp.get();
-  if (typeid(*relExp) == typeid(RelExpAST)) 
+  if (typeid(*relExp) == typeid(RelExpAST))
     return search((RelExpAST*)relExp);
-  else if (typeid(*relExp) == typeid(RelExpWithOpAST)) 
+  else if (typeid(*relExp) == typeid(RelExpWithOpAST))
     return search((RelExpWithOpAST*)relExp);
   return 0;
 }
@@ -968,33 +968,33 @@ int search(const EqExpAST* eqExp) {
 int search(const EqExpWithOpAST* eqExp) {
   int lhs = 0;
   auto exp_l = eqExp->eqExp.get();
-  if (typeid(*exp_l) == typeid(EqExpAST)) 
+  if (typeid(*exp_l) == typeid(EqExpAST))
     lhs = search((EqExpAST*)exp_l);
-  else if (typeid(*exp_l) == typeid(EqExpWithOpAST)) 
+  else if (typeid(*exp_l) == typeid(EqExpWithOpAST))
     lhs = search((EqExpWithOpAST*)exp_l);
 
   int rhs = 0;
   auto exp_r = eqExp->relExp.get();
-  if (typeid(*exp_r) == typeid(RelExpAST)) 
+  if (typeid(*exp_r) == typeid(RelExpAST))
     rhs = search((RelExpAST*)exp_r);
-  else if (typeid(*exp_r) == typeid(RelExpWithOpAST)) 
+  else if (typeid(*exp_r) == typeid(RelExpWithOpAST))
     rhs = search((RelExpWithOpAST*)exp_r);
-  
-  if (eqExp->eqOp == "==") 
+
+  if (eqExp->eqOp == "==")
     return lhs == rhs;
   else if (eqExp->eqOp == "!=")
     return lhs != rhs;
-  else 
+  else
     assert(false);
-  
+
   return 0;
 }
 
 int search(const RelExpAST* relExp) {
   auto addExp = relExp->addExp.get();
-  if (typeid(*addExp) == typeid(AddExpAST)) 
+  if (typeid(*addExp) == typeid(AddExpAST))
     return search((AddExpAST*)addExp);
-  else if (typeid(*addExp) == typeid(AddExpWithOpAST)) 
+  else if (typeid(*addExp) == typeid(AddExpWithOpAST))
     return search((AddExpWithOpAST*)addExp);
   return 0;
 }
@@ -1002,19 +1002,19 @@ int search(const RelExpAST* relExp) {
 int search(const RelExpWithOpAST* relExp) {
   int lhs = 0;
   auto exp_l = relExp->relExp.get();
-  if (typeid(*exp_l) == typeid(RelExpAST)) 
+  if (typeid(*exp_l) == typeid(RelExpAST))
     lhs = search((RelExpAST*)exp_l);
-  else if (typeid(*exp_l) == typeid(RelExpWithOpAST)) 
+  else if (typeid(*exp_l) == typeid(RelExpWithOpAST))
     lhs = search((RelExpWithOpAST*)exp_l);
 
   int rhs = 0;
   auto exp_r = relExp->addExp.get();
-  if (typeid(*exp_r) == typeid(AddExpAST)) 
+  if (typeid(*exp_r) == typeid(AddExpAST))
     rhs = search((AddExpAST*)exp_r);
-  else if (typeid(*exp_r) == typeid(AddExpWithOpAST)) 
+  else if (typeid(*exp_r) == typeid(AddExpWithOpAST))
     rhs = search((AddExpWithOpAST*)exp_r);
-  
-  if (relExp->relOp == "<") 
+
+  if (relExp->relOp == "<")
     return lhs < rhs;
   else if (relExp->relOp == ">")
     return lhs > rhs;
@@ -1022,17 +1022,17 @@ int search(const RelExpWithOpAST* relExp) {
     return lhs <= rhs;
   else if (relExp->relOp == ">=")
     return lhs >= rhs;
-  else 
+  else
     assert(false);
-  
+
   return 0;
 }
 
 int search(const AddExpAST* addExp) {
   auto mulExp = addExp->mulExp.get();
-  if (typeid(*mulExp) == typeid(MulExpAST)) 
+  if (typeid(*mulExp) == typeid(MulExpAST))
     return search((MulExpAST*)mulExp);
-  else if (typeid(*mulExp) == typeid(MulExpWithOpAST)) 
+  else if (typeid(*mulExp) == typeid(MulExpWithOpAST))
     return search((MulExpWithOpAST*)mulExp);
   return 0;
 }
@@ -1040,33 +1040,33 @@ int search(const AddExpAST* addExp) {
 int search(const AddExpWithOpAST* addExp) {
   int lhs = 0;
   auto exp_l = addExp->addExp.get();
-  if (typeid(*exp_l) == typeid(AddExpAST)) 
+  if (typeid(*exp_l) == typeid(AddExpAST))
     lhs = search((AddExpAST*)exp_l);
-  else if (typeid(*exp_l) == typeid(AddExpWithOpAST)) 
+  else if (typeid(*exp_l) == typeid(AddExpWithOpAST))
     lhs = search((AddExpWithOpAST*)exp_l);
 
   int rhs = 0;
   auto exp_r = addExp->mulExp.get();
-  if (typeid(*exp_r) == typeid(MulExpAST)) 
+  if (typeid(*exp_r) == typeid(MulExpAST))
     rhs = search((MulExpAST*)exp_r);
-  else if (typeid(*exp_r) == typeid(MulExpWithOpAST)) 
+  else if (typeid(*exp_r) == typeid(MulExpWithOpAST))
     rhs = search((MulExpWithOpAST*)exp_r);
-  
-  if (addExp->addOp == '+') 
+
+  if (addExp->addOp == '+')
     return lhs + rhs;
   else if (addExp->addOp == '-')
     return lhs - rhs;
-  else 
+  else
     assert(false);
-  
+
   return 0;
 }
 
 int search(const MulExpAST* mulExp) {
   auto unaryExp = mulExp->unaryExp.get();
-  if (typeid(*unaryExp) == typeid(UnaryExpAST)) 
+  if (typeid(*unaryExp) == typeid(UnaryExpAST))
     return search((UnaryExpAST*)unaryExp);
-  else if (typeid(*unaryExp) == typeid(UnaryExpWithOpAST)) 
+  else if (typeid(*unaryExp) == typeid(UnaryExpWithOpAST))
     return search((UnaryExpWithOpAST*)unaryExp);
   return 0;
 }
@@ -1074,60 +1074,54 @@ int search(const MulExpAST* mulExp) {
 int search(const MulExpWithOpAST* mulExp) {
   int lhs = 0;
   auto exp_l = mulExp->mulExp.get();
-  if (typeid(*exp_l) == typeid(MulExpAST)) 
+  if (typeid(*exp_l) == typeid(MulExpAST))
     lhs = search((MulExpAST*)exp_l);
-  else if (typeid(*exp_l) == typeid(MulExpWithOpAST)) 
+  else if (typeid(*exp_l) == typeid(MulExpWithOpAST))
     lhs = search((MulExpWithOpAST*)exp_l);
 
   int rhs = 0;
   auto exp_r = mulExp->unaryExp.get();
-  if (typeid(*exp_r) == typeid(UnaryExpAST)) 
+  if (typeid(*exp_r) == typeid(UnaryExpAST))
     rhs = search((UnaryExpAST*)exp_r);
-  else if (typeid(*exp_r) == typeid(UnaryExpWithOpAST)) 
+  else if (typeid(*exp_r) == typeid(UnaryExpWithOpAST))
     rhs = search((UnaryExpWithOpAST*)exp_r);
-  
-  if (mulExp->mulOp == '*') 
+
+  if (mulExp->mulOp == '*')
     return lhs * rhs;
   else if (mulExp->mulOp == '/')
     return lhs / rhs;
   else if (mulExp->mulOp == '%')
     return lhs % rhs;
-  else 
+  else
     assert(false);
-  
+
   return 0;
 }
 
 int search(const UnaryExpAST* unaryExp) {
   auto primaryExp = unaryExp->primaryExp.get();
-  if (typeid(*primaryExp) == typeid(PrimaryExpWithBrAST)) 
+  if (typeid(*primaryExp) == typeid(PrimaryExpWithBrAST))
     return search((PrimaryExpWithBrAST*)primaryExp);
-  else if (typeid(*primaryExp) == typeid(PrimaryExpWithLValAST)) 
+  else if (typeid(*primaryExp) == typeid(PrimaryExpWithLValAST))
     return search((PrimaryExpWithLValAST*)primaryExp);
-  else if (typeid(*primaryExp) == typeid(PrimaryExpWithNumAST)) 
+  else if (typeid(*primaryExp) == typeid(PrimaryExpWithNumAST))
     return search((PrimaryExpWithNumAST*)primaryExp);
   return 0;
 }
 
 int search(const UnaryExpWithOpAST* unaryExp) {
-  int number = 0;
   auto exp = unaryExp->unaryExp.get();
-  if (typeid(*exp) == typeid(PrimaryExpWithBrAST)) 
-    number = search((PrimaryExpWithBrAST*)exp);
-  else if (typeid(*exp) == typeid(PrimaryExpWithLValAST)) 
-    number = search((PrimaryExpWithLValAST*)exp);
-  else if (typeid(*exp) == typeid(PrimaryExpWithNumAST)) 
-    number = search((PrimaryExpWithNumAST*)exp);
-  
-  if (unaryExp->unaryOp == '+') 
+  int number = search((UnaryExpAST*)exp);
+
+  if (unaryExp->unaryOp == '+')
     return number;
-  else if (unaryExp->unaryOp == '-') 
+  else if (unaryExp->unaryOp == '-')
     return -number;
-  else if (unaryExp->unaryOp == '!') 
+  else if (unaryExp->unaryOp == '!')
     return !number;
-  else 
+  else
     assert(false);
-  
+
   return 0;
 }
 
