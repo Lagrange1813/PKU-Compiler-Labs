@@ -26,9 +26,17 @@ class CompUnitAST : public BaseAST {
   std::pair<bool, int> Output() const override;
 };
 
-class DeclAST : public BaseAST {
+class DeclWithConstAST : public BaseAST {
  public:
   std::unique_ptr<BaseAST> constDecl;
+
+  void Dump() const override;
+  std::pair<bool, int> Output() const override;
+};
+
+class DeclWithVarAST : public BaseAST {
+ public:
+  std::unique_ptr<BaseAST> varDecl;
 
   void Dump() const override;
   std::pair<bool, int> Output() const override;
@@ -55,6 +63,40 @@ class ConstDefAST : public BaseAST {
 class ConstInitValAST : public BaseAST {
  public:
   std::unique_ptr<BaseAST> constExp;
+
+  void Dump() const override;
+  std::pair<bool, int> Output() const override;
+};
+
+class VarDeclAST : public BaseAST {
+ public:
+  std::string bType;
+  std::vector<std::unique_ptr<BaseAST>> varDefList;
+
+  void Dump() const override;
+  std::pair<bool, int> Output() const override;
+};
+
+class VarDefAST : public BaseAST {
+ public:
+  std::string ident;
+
+  void Dump() const override;
+  std::pair<bool, int> Output() const override;
+};
+
+class VarDefWithAssignAST : public BaseAST {
+ public:
+  std::string ident;
+  std::unique_ptr<BaseAST> initVal;
+
+  void Dump() const override;
+  std::pair<bool, int> Output() const override;
+};
+
+class InitValAST : public BaseAST {
+ public:
+  std::unique_ptr<BaseAST> exp;
 
   void Dump() const override;
   std::pair<bool, int> Output() const override;
@@ -102,7 +144,16 @@ class BlockItemWithStmtAST : public BaseAST {
   std::pair<bool, int> Output() const override;
 };
 
-class StmtAST : public BaseAST {
+class StmtWithAssignAST : public BaseAST {
+ public:
+  std::unique_ptr<BaseAST> lVal;
+  std::unique_ptr<BaseAST> exp;
+
+  void Dump() const override;
+  std::pair<bool, int> Output() const override;
+};
+
+class StmtWithReturnAST : public BaseAST {
  public:
   std::unique_ptr<BaseAST> exp;
 

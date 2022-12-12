@@ -3,6 +3,16 @@
 int cnt;
 std::unordered_map<std::string, int> table;
 
+void insertSymbol(const std::string& key, int value) {
+  table[key] = value;
+}
+
+int fetchSymbol(const std::string& key) {
+  if (table.find(key) == table.end())
+    return -1;
+  return table[key];
+}
+
 int search(const ConstExpAST* constExp);
 int search(const ExpAST* exp);
 int search(const LOrExpAST* lOrExp);
@@ -24,16 +34,6 @@ int search(const PrimaryExpWithLValAST* primaryExp);
 int search(const PrimaryExpWithNumAST* primaryExp);
 int search(const LValAST* lVal);
 
-void insertSymbol(const std::string& key, int value) {
-  table[key] = value;
-}
-
-int fetchSymbol(const std::string& key) {
-  if (table.find(key) == table.end())
-    return -1;
-  return table[key];
-}
-
 void CompUnitAST::Dump() const {
   std::cout << "CompUnitAST { ";
   func_def->Dump();
@@ -45,14 +45,24 @@ std::pair<bool, int> CompUnitAST::Output() const {
   return std::pair<bool, int>(false, 0);
 }
 
-void DeclAST::Dump() const {
-  std::cout << "DeclAST { ";
+void DeclWithConstAST::Dump() const {
+  std::cout << "DeclWithConstAST { ";
   constDecl->Dump();
   std::cout << " }";
 }
 
-std::pair<bool, int> DeclAST::Output() const {
+std::pair<bool, int> DeclWithConstAST::Output() const {
   return constDecl->Output();
+}
+
+void DeclWithVarAST::Dump() const {
+  std::cout << "DeclWithVarAST { ";
+  varDecl->Dump();
+  std::cout << " }";
+}
+
+std::pair<bool, int> DeclWithVarAST::Output() const {
+  return varDecl->Output();
 }
 
 void ConstDeclAST::Dump() const {
@@ -93,6 +103,56 @@ void ConstInitValAST::Dump() const {
 std::pair<bool, int> ConstInitValAST::Output() const {
   // BaseAST * constExp_p = dynamic_cast<BaseAST*>(constExp.get());
   int ret = search((ConstExpAST*)constExp.get());
+  return std::pair<bool, int>(true, ret);
+}
+
+void VarDeclAST::Dump() const {
+  std::cout << "VarDeclAST { ";
+  std::cout << "BTypeAST { " << bType << "}";
+  for (auto& varDef : varDefList) {
+    varDef->Dump();
+  }
+  std::cout << " }";
+}
+
+std::pair<bool, int> VarDeclAST::Output() const {
+  for (auto& varDef : varDefList) {
+    varDef->Output();
+  }
+  return std::pair<bool, int>(false, 0);
+}
+
+void VarDefAST::Dump() const {
+  std::cout << "VarDefAST { ";
+  std::cout << "Ident { " << ident << "}";
+  std::cout << " }";
+}
+
+std::pair<bool, int> VarDefAST::Output() const {
+  return std::pair<bool, int>(false, 0);
+}
+
+void VarDefWithAssignAST::Dump() const {
+  std::cout << "VarDefWithAssignAST { ";
+  std::cout << "Ident { " << ident << "}";
+  initVal->Dump();
+  std::cout << " }";
+}
+
+std::pair<bool, int> VarDefWithAssignAST::Output() const {
+  std::pair<bool, int> result = initVal->Output();
+  insertSymbol(ident, result.second);
+  return std::pair<bool, int>(false, 0);
+}
+
+void InitValAST::Dump() const {
+  std::cout << "InitValAST { ";
+  exp->Dump();
+  std::cout << " }";
+}
+
+std::pair<bool, int> InitValAST::Output() const {
+  int ret = search((ExpAST*)exp.get());
   return std::pair<bool, int>(true, ret);
 }
 
@@ -169,13 +229,26 @@ std::pair<bool, int> BlockItemWithStmtAST::Output() const {
   return stmt->Output();
 }
 
-void StmtAST::Dump() const {
-  std::cout << "StmtAST { ";
+void StmtWithAssignAST::Dump() const {
+  std::cout << "StmtWithAssignAST { ";
+  lVal->Dump();
   exp->Dump();
   std::cout << " }";
 }
 
-std::pair<bool, int> StmtAST::Output() const {
+std::pair<bool, int> StmtWithAssignAST::Output() const {
+  std::pair<bool, int> result = exp->Output();
+
+  return std::pair<bool, int>(false, 0);
+}
+
+void StmtWithReturnAST::Dump() const {
+  std::cout << "StmtWithReturnAST { ";
+  exp->Dump();
+  std::cout << " }";
+}
+
+std::pair<bool, int> StmtWithReturnAST::Output() const {
   std::pair<bool, int> result = exp->Output();
 
   if (result.first) {
