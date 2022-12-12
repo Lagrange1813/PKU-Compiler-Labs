@@ -4,6 +4,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <cassert>
 #include "koopa.h"
 
 extern std::string str;
