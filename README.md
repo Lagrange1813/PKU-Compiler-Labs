@@ -1,4 +1,4 @@
-笔记
+[北大编译实践在线文档](https://pku-minic.github.io/online-doc/#/)
 
 # 北京大学编译实践
 
