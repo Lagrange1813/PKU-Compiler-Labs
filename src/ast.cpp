@@ -150,6 +150,11 @@ void VarDefAST::Dump() const {
 }
 
 std::pair<bool, int> VarDefAST::Output() const {
+  str += "  @";
+  str += ident;
+  str += " = alloc i32\n";
+
+  insertSymbol(ident, 0, false);
   return std::pair<bool, int>(false, 0);
 }
 
@@ -166,11 +171,19 @@ std::pair<bool, int> VarDefWithAssignAST::Output() const {
   str += ident;
   str += " = alloc i32\n";
 
-  str += "  store ";
-  str += std::to_string(result.second);
-  str += ", @";
-  str += ident;
-  str += "\n";
+  if (result.first) {
+    str += "  store ";
+    str += std::to_string(result.second);
+    str += ", @";
+    str += ident;
+    str += "\n";
+  } else {
+    str += "  store %";
+    str += std::to_string(cnt - 1);
+    str += ", @";
+    str += ident;
+    str += "\n";
+  }
 
   insertSymbol(ident, 0, false);
   return std::pair<bool, int>(false, 0);
@@ -183,8 +196,7 @@ void InitValAST::Dump() const {
 }
 
 std::pair<bool, int> InitValAST::Output() const {
-  int ret = search((ExpAST*)exp.get());
-  return std::pair<bool, int>(true, ret);
+  return exp->Output();
 }
 
 void FuncDefAST::Dump() const {
@@ -269,13 +281,6 @@ void StmtWithAssignAST::Dump() const {
 
 std::pair<bool, int> StmtWithAssignAST::Output() const {
   auto ident = ((LValAST*)lVal.get())->ident;
-  
-  // str += "  %";
-  // str += std::to_string(cnt);
-  // cnt++;
-  // str += " = load @";
-  // str += ident;
-  // str += "\n";
 
   std::pair<bool, int> result = exp->Output();
 
