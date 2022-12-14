@@ -112,7 +112,7 @@ void Visit(const koopa_raw_value_t& value) {
   }
 }
 
-bool Search(const koopa_raw_value_t value) {
+void Search(const koopa_raw_value_t value) {
   // cout << "  TAG: " << value->kind.tag << "\n";
 
   if (value->kind.tag == KOOPA_RVT_INTEGER && value->kind.data.integer.value != 0) {
@@ -122,26 +122,13 @@ bool Search(const koopa_raw_value_t value) {
 
     dic[value] = "t" + to_string(reg_cnt);
     reg_cnt++;
-
-    return false;
   } else if (value->kind.tag == KOOPA_RVT_INTEGER && value->kind.data.integer.value == 0) {
     dic[value] = "x0";
-    return true;
   } else if (value->kind.tag == KOOPA_RVT_ALLOC || value->kind.tag == KOOPA_RVT_LOAD || value->kind.tag == KOOPA_RVT_BINARY) {
     cout << "  lw t" << reg_cnt << ", " << dic[value] << "\n";
     dic[value] = "t" + to_string(reg_cnt);
     reg_cnt++;
-    return false;
   }
-
-  return false;
-}
-
-bool isNum(const koopa_raw_value_t value) {
-  if (value->kind.tag == KOOPA_RVT_INTEGER) {
-    return true;
-  }
-  return false;
 }
 
 void Visit(const koopa_raw_load_t& load, const koopa_raw_value_t& value) {
@@ -160,7 +147,6 @@ void Visit(const koopa_raw_store_t& store) {
     stack_cnt++;
   }
   cout << "  sw " << dic[store.value] << ", " << dic[store.dest] << "\n";
-  
 }
 
 void Visit(const koopa_raw_return_t& ret) {
@@ -183,122 +169,130 @@ void Visit(const koopa_raw_integer_t& integer) {
   cout << integer.value;
 }
 
+bool isNum(const koopa_raw_value_t value) {
+  if (value->kind.tag == KOOPA_RVT_INTEGER) {
+    return true;
+  }
+  return false;
+}
+
 void Visit(const koopa_raw_binary_t& binary, const koopa_raw_value_t& value) {
   switch (binary.op) {
     /// Not equal to.
     case 0: {
-      bool zero_l = Search(binary.lhs);
-      bool zero_r = Search(binary.rhs);
+      reg_cnt = 0;
 
-      int cur = asm_cnt - 1;
+      Search(binary.lhs);
+      Search(binary.rhs);
 
-      if (zero_l && zero_r) {
-        cur = asm_cnt;
-        asm_cnt++;
-      }
+      cout << "  xor t0"
+           << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
+      cout << "  snez t0"
+           << ", t0"
+           << "\n";
+      cout << "  sw t0, " << stack_cnt * 4 << "(sp)"
+           << "\n";
 
-      cout << "  xor t" << cur << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
-      cout << "  snez t" << cur << ", t" << cur << "\n";
-
-      dic[value] = "t" + to_string(cur);
+      dic[value] = to_string(stack_cnt * 4) + "(sp)";
+      stack_cnt++;
 
       break;
     }
 
     /// Equal to.
     case 1: {
-      bool zero_l = Search(binary.lhs);
-      bool zero_r = Search(binary.rhs);
+      reg_cnt = 0;
 
-      int cur = asm_cnt - 1;
+      Search(binary.lhs);
+      Search(binary.rhs);
 
-      if (zero_l && zero_r) {
-        cur = asm_cnt;
-        asm_cnt++;
-      }
+      cout << "  xor t0"
+           << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
+      cout << "  seqz t0"
+           << ", t0"
+           << "\n";
+      cout << "  sw t0, " << stack_cnt * 4 << "(sp)"
+           << "\n";
 
-      cout << "  xor t" << cur << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
-      cout << "  seqz t" << cur << ", t" << cur << "\n";
-
-      dic[value] = "t" + to_string(cur);
+      dic[value] = to_string(stack_cnt * 4) + "(sp)";
+      stack_cnt++;
 
       break;
     }
 
     /// Greater than.
     case 2: {
-      bool zero_l = Search(binary.lhs);
-      bool zero_r = Search(binary.rhs);
+      reg_cnt = 0;
 
-      int cur = asm_cnt - 1;
+      Search(binary.lhs);
+      Search(binary.rhs);
 
-      if (zero_l && zero_r) {
-        cur = asm_cnt;
-        asm_cnt++;
-      }
+      cout << "  sgt t0"
+           << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
+      cout << "  sw t0, " << stack_cnt * 4 << "(sp)"
+           << "\n";
 
-      cout << "  sgt t" << cur << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
-
-      dic[value] = "t" + to_string(cur);
+      dic[value] = to_string(stack_cnt * 4) + "(sp)";
+      stack_cnt++;
 
       break;
     }
 
     /// Less than.
     case 3: {
-      bool zero_l = Search(binary.lhs);
-      bool zero_r = Search(binary.rhs);
+      reg_cnt = 0;
 
-      int cur = asm_cnt - 1;
+      Search(binary.lhs);
+      Search(binary.rhs);
 
-      if (zero_l && zero_r) {
-        cur = asm_cnt;
-        asm_cnt++;
-      }
+      cout << "  slt t0"
+           << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
+      cout << "  sw t0, " << stack_cnt * 4 << "(sp)"
+           << "\n";
 
-      cout << "  slt t" << cur << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
-
-      dic[value] = "t" + to_string(cur);
+      dic[value] = to_string(stack_cnt * 4) + "(sp)";
+      stack_cnt++;
 
       break;
     }
 
     /// Greater than or equal to.
     case 4: {
-      bool zero_l = Search(binary.lhs);
-      bool zero_r = Search(binary.rhs);
+      reg_cnt = 0;
 
-      int cur = asm_cnt - 1;
+      Search(binary.lhs);
+      Search(binary.rhs);
 
-      if (zero_l && zero_r) {
-        cur = asm_cnt;
-        asm_cnt++;
-      }
+      cout << "  slt t0"
+           << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
+      cout << "  seqz t0"
+           << ", t0"
+           << "\n";
+      cout << "  sw t0, " << stack_cnt * 4 << "(sp)"
+           << "\n";
 
-      cout << "  slt t" << cur << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
-      cout << "  seqz t" << cur << ", t" << cur << "\n";
-
-      dic[value] = "t" + to_string(cur);
+      dic[value] = to_string(stack_cnt * 4) + "(sp)";
+      stack_cnt++;
 
       break;
     }
 
     /// Less than or equal to.
     case 5: {
-      bool zero_l = Search(binary.lhs);
-      bool zero_r = Search(binary.rhs);
+      reg_cnt = 0;
 
-      int cur = asm_cnt - 1;
+      Search(binary.lhs);
+      Search(binary.rhs);
 
-      if (zero_l && zero_r) {
-        cur = asm_cnt;
-        asm_cnt++;
-      }
+      cout << "  sgt t0"
+           << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
+      cout << "  seqz t0, t0"
+           << "\n";
+      cout << "  sw t0, " << stack_cnt * 4 << "(sp)"
+           << "\n";
 
-      cout << "  sgt t" << cur << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
-      cout << "  seqz t" << cur << ", t" << cur << "\n";
-
-      dic[value] = "t" + to_string(cur);
+      dic[value] = to_string(stack_cnt * 4) + "(sp)";
+      stack_cnt++;
 
       break;
     }
@@ -306,14 +300,16 @@ void Visit(const koopa_raw_binary_t& binary, const koopa_raw_value_t& value) {
     /// Addition.
     case 6: {
       reg_cnt = 0;
-      
+
       Search(binary.lhs);
       Search(binary.rhs);
 
-      cout << "  add t0" << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
-      cout << "  sw t0, " << stack_cnt * 4 << "(sp)" << "\n";
+      cout << "  add t0"
+           << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
+      cout << "  sw t0, " << stack_cnt * 4 << "(sp)"
+           << "\n";
 
-      dic[value] =  to_string(stack_cnt * 4) + "(sp)";
+      dic[value] = to_string(stack_cnt * 4) + "(sp)";
       stack_cnt++;
 
       break;
@@ -321,142 +317,158 @@ void Visit(const koopa_raw_binary_t& binary, const koopa_raw_value_t& value) {
 
     /// Subtraction.
     case 7: {
-      bool zero_l = Search(binary.lhs);
-      bool zero_r = Search(binary.rhs);
+      reg_cnt = 0;
 
-      int cur = asm_cnt - 1;
+      Search(binary.lhs);
+      Search(binary.rhs);
 
-      if (zero_l && zero_r) {
-        cur = asm_cnt;
-        asm_cnt++;
-      }
+      cout << "  sub t0"
+           << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
+      cout << "  sw t0, " << stack_cnt * 4 << "(sp)"
+           << "\n";
 
-      cout << "  sub t" << cur << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
-
-      dic[value] = "t" + to_string(cur);
+      dic[value] = to_string(stack_cnt * 4) + "(sp)";
+      stack_cnt++;
 
       break;
     }
 
     /// Multiplication.
     case 8: {
-      bool zero_l = Search(binary.lhs);
-      bool zero_r = Search(binary.rhs);
+      reg_cnt = 0;
 
-      int cur = asm_cnt - 1;
+      Search(binary.lhs);
+      Search(binary.rhs);
 
-      if (zero_l && zero_r) {
-        cur = asm_cnt;
-        asm_cnt++;
-      }
+      cout << "  mul t0"
+           << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
+      cout << "  sw t0, " << stack_cnt * 4 << "(sp)"
+           << "\n";
 
-      cout << "  mul t" << cur << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
-
-      dic[value] = "t" + to_string(cur);
+      dic[value] = to_string(stack_cnt * 4) + "(sp)";
+      stack_cnt++;
 
       break;
     }
 
     /// Division.
     case 9: {
-      bool zero_l = Search(binary.lhs);
-      bool zero_r = Search(binary.rhs);
+      reg_cnt = 0;
 
-      int cur = asm_cnt - 1;
+      Search(binary.lhs);
+      Search(binary.rhs);
 
-      if (zero_l && zero_r) {
-        cur = asm_cnt;
-        asm_cnt++;
-      }
+      cout << "  div t0"
+           << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
+      cout << "  sw t0, " << stack_cnt * 4 << "(sp)"
+           << "\n";
 
-      cout << "  div t" << cur << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
-
-      dic[value] = "t" + to_string(cur);
+      dic[value] = to_string(stack_cnt * 4) + "(sp)";
+      stack_cnt++;
 
       break;
     }
 
     /// Modulo.
     case 10: {
-      bool zero_l = Search(binary.lhs);
-      bool zero_r = Search(binary.rhs);
+      reg_cnt = 0;
 
-      int cur = asm_cnt - 1;
+      Search(binary.lhs);
+      Search(binary.rhs);
 
-      if (zero_l && zero_r) {
-        cur = asm_cnt;
-        asm_cnt++;
-      }
+      cout << "  rem t0"
+           << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
+      cout << "  sw t0, " << stack_cnt * 4 << "(sp)"
+           << "\n";
 
-      cout << "  rem t" << cur << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
-
-      dic[value] = "t" + to_string(cur);
+      dic[value] = to_string(stack_cnt * 4) + "(sp)";
+      stack_cnt++;
 
       break;
     }
 
     /// Bitwise AND.
     case 11: {
+      reg_cnt = 0;
+
       bool int_l = isNum(binary.lhs);
       bool int_r = isNum(binary.rhs);
 
       if (int_l && int_r) {
-        cout << "  li t" << asm_cnt << ", ";
+        cout << "  li t" << reg_cnt << ", ";
         Visit(binary.lhs->kind.data.integer);
         cout << "\n";
 
-        dic[binary.lhs] = "t" + to_string(asm_cnt);
-        asm_cnt++;
+        dic[binary.lhs] = "t" + to_string(reg_cnt);
+        reg_cnt++;
 
-        cout << "  andi t" << asm_cnt - 1 << ", " << dic[binary.lhs] << ", ";
+        cout << "  andi t0"
+             << ", " << dic[binary.lhs] << ", ";
         Visit(binary.lhs->kind.data.integer);
         cout << "\n";
       } else if (int_l && !int_r) {
-        cout << "  andi t" << asm_cnt - 1 << ", " << dic[binary.rhs] << ", ";
+        cout << "  andi t0"
+             << ", " << dic[binary.rhs] << ", ";
         Visit(binary.lhs->kind.data.integer);
         cout << "\n";
       } else if (!int_l && int_r) {
-        cout << "  andi t" << asm_cnt - 1 << ", " << dic[binary.lhs] << ", ";
+        cout << "  andi t0"
+             << ", " << dic[binary.lhs] << ", ";
         Visit(binary.rhs->kind.data.integer);
         cout << "\n";
       } else {
-        cout << "  and t" << asm_cnt - 1 << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
+        cout << "  and t0"
+             << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
       }
 
-      dic[value] = "t" + to_string(asm_cnt - 1);
+      cout << "  sw t0, " << stack_cnt * 4 << "(sp)"
+           << "\n";
+
+      dic[value] = to_string(stack_cnt * 4) + "(sp)";
+      stack_cnt++;
 
       break;
     }
 
     /// Bitwise OR.
     case 12: {
+      reg_cnt = 0;
+
       bool int_l = isNum(binary.lhs);
       bool int_r = isNum(binary.rhs);
 
       if (int_l && int_r) {
-        cout << "  li t" << asm_cnt << ", ";
+        cout << "  li t" << reg_cnt << ", ";
         Visit(binary.lhs->kind.data.integer);
         cout << "\n";
 
-        dic[binary.lhs] = "t" + to_string(asm_cnt);
-        asm_cnt++;
+        dic[binary.lhs] = "t" + to_string(reg_cnt);
+        reg_cnt++;
 
-        cout << "  ori t" << asm_cnt - 1 << ", " << dic[binary.lhs] << ", ";
+        cout << "  ori t0"
+             << ", " << dic[binary.lhs] << ", ";
         Visit(binary.lhs->kind.data.integer);
         cout << "\n";
       } else if (int_l && !int_r) {
-        cout << "  ori t" << asm_cnt - 1 << ", " << dic[binary.rhs] << ", ";
+        cout << "  ori t0"
+             << ", " << dic[binary.rhs] << ", ";
         Visit(binary.lhs->kind.data.integer);
         cout << "\n";
       } else if (!int_l && int_r) {
-        cout << "  ori t" << asm_cnt - 1 << ", " << dic[binary.lhs] << ", ";
+        cout << "  ori t0"
+             << ", " << dic[binary.lhs] << ", ";
         Visit(binary.rhs->kind.data.integer);
         cout << "\n";
       } else {
-        cout << "  or t" << asm_cnt - 1 << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
+        cout << "  or t0"
+             << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
       }
 
-      dic[value] = "t" + to_string(asm_cnt - 1);
+      cout << "  sw t0, " << stack_cnt * 4 << "(sp)"
+           << "\n";
+
+      dic[value] = to_string(stack_cnt * 4) + "(sp)";
+      stack_cnt++;
 
       break;
     }
