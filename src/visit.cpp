@@ -169,12 +169,7 @@ void Visit(const koopa_raw_integer_t& integer) {
   cout << integer.value;
 }
 
-bool isNum(const koopa_raw_value_t value) {
-  if (value->kind.tag == KOOPA_RVT_INTEGER) {
-    return true;
-  }
-  return false;
-}
+bool isNum(const koopa_raw_value_t value);
 
 void Visit(const koopa_raw_binary_t& binary, const koopa_raw_value_t& value) {
   switch (binary.op) {
@@ -476,4 +471,14 @@ void Visit(const koopa_raw_binary_t& binary, const koopa_raw_value_t& value) {
     default:
       break;
   }
+}
+
+bool isNum(const koopa_raw_value_t value) {
+  if (value->kind.tag == KOOPA_RVT_INTEGER) {
+    return true;
+  }
+  cout << "  lw t" << reg_cnt << ", " << dic[value] << "\n";
+  dic[value] = "t" + to_string(reg_cnt);
+  reg_cnt++;
+  return false;
 }
