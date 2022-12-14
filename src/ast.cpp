@@ -300,6 +300,28 @@ std::pair<bool, int> StmtWithAssignAST::Output() const {
   return std::pair<bool, int>(false, 0);
 }
 
+void StmtWithExpAST::Dump() const {
+  std::cout << "StmtWithExpAST { ";
+  if (exp) {
+    (*exp)->Dump();
+  }
+  std::cout << " }";
+}
+
+std::pair<bool, int> StmtWithExpAST::Output() const {
+  return std::pair<bool, int>(false, 0);
+}
+
+void StmtWithBlockAST::Dump() const {
+  std::cout << "StmtWithBlockAST { ";
+  block->Dump();
+  std::cout << " }";
+}
+
+std::pair<bool, int> StmtWithBlockAST::Output() const {
+  return std::pair<bool, int>(false, 0);
+}
+
 void StmtWithReturnAST::Dump() const {
   std::cout << "StmtWithReturnAST { ";
   exp->Dump();

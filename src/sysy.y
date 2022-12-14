@@ -243,6 +243,20 @@ Stmt
     ast->exp = unique_ptr<BaseAST>($3);
     $$ = ast;
   }
+  | ';' {
+    auto ast = new StmtWithExpAST();
+    $$ = ast;
+  }
+  | Exp ';' {
+    auto ast = new StmtWithExpAST();
+    ast->exp = make_optional(unique_ptr<BaseAST>($1)); 
+    $$ = ast;
+  }
+  | Block {
+    auto ast = new StmtWithBlockAST();
+    ast->block = unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }
   | RETURN Exp ';' {
     auto ast = new StmtWithReturnAST();
     ast->exp = unique_ptr<BaseAST>($2);

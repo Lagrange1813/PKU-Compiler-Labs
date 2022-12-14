@@ -153,6 +153,22 @@ class StmtWithAssignAST : public BaseAST {
   std::pair<bool, int> Output() const override;
 };
 
+class StmtWithExpAST : public BaseAST {
+ public:
+  std::optional<std::unique_ptr<BaseAST>> exp;
+
+  void Dump() const override;
+  std::pair<bool, int> Output() const override;
+};
+
+class StmtWithBlockAST : public BaseAST {
+ public:
+  std::unique_ptr<BaseAST> block;
+
+  void Dump() const override;
+  std::pair<bool, int> Output() const override;
+};
+
 class StmtWithReturnAST : public BaseAST {
  public:
   std::unique_ptr<BaseAST> exp;
