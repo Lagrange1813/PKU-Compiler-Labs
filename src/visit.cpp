@@ -8,6 +8,8 @@ using namespace std;
 int asm_cnt = 0;
 unordered_map<koopa_raw_value_t, string> dic;
 int stack_space = 0;
+int stack_cnt = 0;
+int reg_cnt = 0;
 
 // 访问 raw program
 void Visit(const koopa_raw_program_t& program) {
@@ -88,7 +90,7 @@ void Visit(const koopa_raw_value_t& value) {
       break;
     case KOOPA_RVT_LOAD:
       // 访问 load 指令
-      Visit(kind.data.load);
+      Visit(kind.data.load, value);
       break;
     case KOOPA_RVT_STORE:
       // 访问 store 指令
@@ -111,21 +113,25 @@ void Visit(const koopa_raw_value_t& value) {
 }
 
 bool Search(const koopa_raw_value_t value) {
-  if (asm_cnt == 7)
-    asm_cnt = 0;
+  // cout << "  TAG: " << value->kind.tag << "\n";
 
   if (value->kind.tag == KOOPA_RVT_INTEGER && value->kind.data.integer.value != 0) {
-    cout << "  li t" << asm_cnt << ", ";
+    cout << "  li t" << reg_cnt << ", ";
     Visit(value->kind.data.integer);
     cout << "\n";
 
-    dic[value] = "t" + to_string(asm_cnt);
-    asm_cnt++;
+    dic[value] = "t" + to_string(reg_cnt);
+    reg_cnt++;
 
     return false;
   } else if (value->kind.tag == KOOPA_RVT_INTEGER && value->kind.data.integer.value == 0) {
     dic[value] = "x0";
     return true;
+  } else if (value->kind.tag == KOOPA_RVT_ALLOC || value->kind.tag == KOOPA_RVT_LOAD || value->kind.tag == KOOPA_RVT_BINARY) {
+    cout << "  lw t" << reg_cnt << ", " << dic[value] << "\n";
+    dic[value] = "t" + to_string(reg_cnt);
+    reg_cnt++;
+    return false;
   }
 
   return false;
@@ -138,15 +144,23 @@ bool isNum(const koopa_raw_value_t value) {
   return false;
 }
 
-void Visit(const koopa_raw_load_t& load) {
-  Search(load.src);
-  cout << "sw t0, 0(sp)" << "\n";
-  cout << "LOAD " << load.src->kind.tag << "\n";
+void Visit(const koopa_raw_load_t& load, const koopa_raw_value_t& value) {
+  cout << "  lw t0, " << dic[load.src] << "\n";
+  cout << "  sw t0, " << stack_cnt * 4 << "(sp)"
+       << "\n";
+  dic[value] = to_string(stack_cnt * 4) + "(sp)";
+  stack_cnt++;
 }
 
 void Visit(const koopa_raw_store_t& store) {
-  cout << "STORE VALUE " << store.value->kind.tag << "\n";
-  cout << "STORE DEST " << store.dest->kind.tag << "\n";
+  reg_cnt = 0;
+  Search(store.value);
+  if (dic.find(store.dest) == dic.end()) {
+    dic[store.dest] = to_string(stack_cnt * 4) + "(sp)";
+    stack_cnt++;
+  }
+  cout << "  sw " << dic[store.value] << ", " << dic[store.dest] << "\n";
+  
 }
 
 void Visit(const koopa_raw_return_t& ret) {
@@ -154,13 +168,15 @@ void Visit(const koopa_raw_return_t& ret) {
     cout << "  li a0, ";
     Visit(ret.value->kind.data.integer);
     cout << "\n";
+  } else if (ret.value->kind.tag == KOOPA_RVT_BINARY || ret.value->kind.tag == KOOPA_RVT_LOAD) {
+    cout << "  lw a0, " << dic[ret.value] << "\n";
   } else {
-    cout << "  mv a0, "
-         << "t" << asm_cnt - 1 << "\n";
+    cout << "  ERROR: Undefined Tag: " << ret.value->kind.tag << "\n";
   }
 
   cout << "  addi sp, sp, " << stack_space << "\n";
-  cout << "  ret" << "\n";
+  cout << "  ret"
+       << "\n";
 }
 
 void Visit(const koopa_raw_integer_t& integer) {
@@ -289,19 +305,16 @@ void Visit(const koopa_raw_binary_t& binary, const koopa_raw_value_t& value) {
 
     /// Addition.
     case 6: {
-      bool zero_l = Search(binary.lhs);
-      bool zero_r = Search(binary.rhs);
+      reg_cnt = 0;
+      
+      Search(binary.lhs);
+      Search(binary.rhs);
 
-      int cur = asm_cnt - 1;
+      cout << "  add t0" << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
+      cout << "  sw t0, " << stack_cnt * 4 << "(sp)" << "\n";
 
-      if (zero_l && zero_r) {
-        cur = asm_cnt;
-        asm_cnt++;
-      }
-
-      cout << "  add t" << cur << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
-
-      dic[value] = "t" + to_string(cur);
+      dic[value] =  to_string(stack_cnt * 4) + "(sp)";
+      stack_cnt++;
 
       break;
     }
