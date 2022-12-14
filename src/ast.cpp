@@ -31,7 +31,6 @@ void insertSymbol(const std::string& key, int value, bool isConst) {
 std::pair<value_type, int> fetchSymbol(const std::string& key) {
   if (table.find(key) == table.end())
     return std::pair<value_type, int>(CONSTANT, -1);
-  ;
   return std::pair<value_type, int>(table[key]->type, table[key]->value);
 }
 
@@ -828,7 +827,7 @@ std::pair<bool, int> LAndExpWithOpAST::Output() const {
 
     if (sign_l) {
       str += std::to_string(result_l.second);
-    } else if (!sign_l && sign_r) {
+    } else if (sign_r) {
       str += "%";
       str += std::to_string(cnt - 1);
     } else {
@@ -943,7 +942,7 @@ std::pair<bool, int> LOrExpWithOpAST::Output() const {
 
     if (sign_l) {
       str += std::to_string(result_l.second);
-    } else if (!sign_l && sign_r) {
+    } else if (sign_r) {
       str += "%";
       str += std::to_string(cnt - 1);
     } else {

@@ -7,6 +7,7 @@ using namespace std;
 
 int asm_cnt = 0;
 unordered_map<koopa_raw_value_t, string> dic;
+int stack_space = 0;
 
 // 访问 raw program
 void Visit(const koopa_raw_program_t& program) {
@@ -49,6 +50,18 @@ void Visit(const koopa_raw_function_t& func) {
   cout << "  .text\n";
   cout << "  .globl " << func->name + 1 << "\n";
   cout << func->name + 1 << ":\n";
+
+  const koopa_raw_slice_t& insts = reinterpret_cast<koopa_raw_basic_block_t>(func->bbs.buffer[0])->insts;
+  int cnt = insts.len;
+  for (size_t i = 0; i < insts.len; ++i) {
+    auto inst = reinterpret_cast<koopa_raw_value_t>(insts.buffer[i]);
+    if (inst->ty->tag == KOOPA_RTT_UNIT) {
+      cnt--;
+    }
+  }
+  stack_space = cnt * 4;
+  cout << "  addi sp, sp, " << -(cnt * 4) << "\n";
+
   // 访问所有基本块
   Visit(func->bbs);
 }
@@ -66,45 +79,40 @@ void Visit(const koopa_raw_value_t& value) {
   // 根据指令类型判断后续需要如何访问
   const auto& kind = value->kind;
   switch (kind.tag) {
-    case KOOPA_RVT_RETURN:
-      // 访问 return 指令
-      Visit(kind.data.ret);
-      break;
     case KOOPA_RVT_INTEGER:
       // 访问 integer 指令
       Visit(kind.data.integer);
+      break;
+    case KOOPA_RVT_ALLOC:
+
+      break;
+    case KOOPA_RVT_LOAD:
+      // 访问 load 指令
+      Visit(kind.data.load);
+      break;
+    case KOOPA_RVT_STORE:
+      // 访问 store 指令
+      Visit(kind.data.store);
       break;
     case KOOPA_RVT_BINARY:
       // 访问 binary 指令
       Visit(kind.data.binary, value);
       break;
+    case KOOPA_RVT_RETURN:
+      // 访问 return 指令
+      Visit(kind.data.ret);
+      break;
     default:
       // 其他类型暂时遇不到
+      // cout << kind.tag << "\n";
       assert(false);
       break;
   }
 }
 
-void Visit(const koopa_raw_return_t& ret) {
-  if (ret.value->kind.tag == KOOPA_RVT_INTEGER) {
-    cout << "  li a0, ";
-    Visit(ret.value->kind.data.integer);
-    cout << "\n";
-  } else {
-    cout << "  mv a0, "
-         << "t" << asm_cnt - 1 << "\n";
-  }
-
-  cout << "  ret"
-       << "\n";
-}
-
-void Visit(const koopa_raw_integer_t& integer) {
-  cout << integer.value;
-}
-
 bool Search(const koopa_raw_value_t value) {
-  if (asm_cnt == 7) asm_cnt = 0;
+  if (asm_cnt == 7)
+    asm_cnt = 0;
 
   if (value->kind.tag == KOOPA_RVT_INTEGER && value->kind.data.integer.value != 0) {
     cout << "  li t" << asm_cnt << ", ";
@@ -128,6 +136,35 @@ bool isNum(const koopa_raw_value_t value) {
     return true;
   }
   return false;
+}
+
+void Visit(const koopa_raw_load_t& load) {
+  Search(load.src);
+  cout << "sw t0, 0(sp)" << "\n";
+  cout << "LOAD " << load.src->kind.tag << "\n";
+}
+
+void Visit(const koopa_raw_store_t& store) {
+  cout << "STORE VALUE " << store.value->kind.tag << "\n";
+  cout << "STORE DEST " << store.dest->kind.tag << "\n";
+}
+
+void Visit(const koopa_raw_return_t& ret) {
+  if (ret.value->kind.tag == KOOPA_RVT_INTEGER) {
+    cout << "  li a0, ";
+    Visit(ret.value->kind.data.integer);
+    cout << "\n";
+  } else {
+    cout << "  mv a0, "
+         << "t" << asm_cnt - 1 << "\n";
+  }
+
+  cout << "  addi sp, sp, " << stack_space << "\n";
+  cout << "  ret" << "\n";
+}
+
+void Visit(const koopa_raw_integer_t& integer) {
+  cout << integer.value;
 }
 
 void Visit(const koopa_raw_binary_t& binary, const koopa_raw_value_t& value) {
