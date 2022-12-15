@@ -171,6 +171,16 @@ class StmtWithBlockAST : public BaseAST {
   std::pair<bool, int> Output() const override;
 };
 
+class StmtWithIfAST : public BaseAST {
+ public:
+  std::unique_ptr<BaseAST> exp;
+  std::unique_ptr<BaseAST> if_stmt;
+  std::optional<std::unique_ptr<BaseAST>> else_stmt;
+
+  void Dump() const override;
+  std::pair<bool, int> Output() const override;
+};
+
 class StmtWithReturnAST : public BaseAST {
  public:
   std::unique_ptr<BaseAST> exp;

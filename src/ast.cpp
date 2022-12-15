@@ -31,10 +31,6 @@ void insertSymbol(const std::string& key, int value, bool isConst) {
 }
 
 std::tuple<value_type, int, int> fetchSymbol(const std::string& key) {
-  // if ((*symbol_tables[cur_table]).find(key) == (*symbol_tables[cur_table]).end())
-  //   return std::make_tuple(UNDEFINED, -1, -1);
-  // return std::make_tuple((*symbol_tables[cur_table])[key]->type, (*symbol_tables[cur_table])[key]->value, 1);
-
   int cur = cur_table;
   while (cur >= 0) {
     if ((*symbol_tables[cur]).find(key) == (*symbol_tables[cur]).end()) {
@@ -276,7 +272,7 @@ std::pair<bool, int> BlockAST::Output() const {
 
   symbol_tables.pop_back();
   cur_table = symbol_tables.size() - 1;
-  
+
   return std::pair<bool, int>(false, 0);
 }
 
@@ -347,7 +343,8 @@ void StmtWithExpAST::Dump() const {
 }
 
 std::pair<bool, int> StmtWithExpAST::Output() const {
-  if (exp) (*exp)->Output();
+  if (exp)
+    (*exp)->Output();
   return std::pair<bool, int>(false, 0);
 }
 
@@ -359,6 +356,18 @@ void StmtWithBlockAST::Dump() const {
 
 std::pair<bool, int> StmtWithBlockAST::Output() const {
   block->Output();
+  return std::pair<bool, int>(false, 0);
+}
+
+void StmtWithIfAST::Dump() const {
+  std::cout << "StmtWithIfAST { ";
+  exp->Dump();
+  if_stmt->Dump();
+  if (else_stmt) (*else_stmt)->Dump();
+  std::cout << " }";
+}
+
+std::pair<bool, int> StmtWithIfAST::Output() const {
   return std::pair<bool, int>(false, 0);
 }
 
