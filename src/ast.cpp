@@ -368,6 +368,22 @@ void StmtWithIfAST::Dump() const {
 }
 
 std::pair<bool, int> StmtWithIfAST::Output() const {
+  exp->Output();
+  str += "  br %";
+  str += std::to_string(cnt-1);
+  str += ", %then, %else\n";
+
+  str += "%then:\n";
+  if_stmt->Output();
+  str += "  jump %end\n";
+
+  if (else_stmt) {
+    str += "%else:\n";
+    (*else_stmt)->Output();
+    str += "  jump %end\n";
+  }
+
+  str += "%end:\n";
   return std::pair<bool, int>(false, 0);
 }
 

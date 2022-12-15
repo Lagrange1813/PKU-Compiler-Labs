@@ -105,8 +105,8 @@ void Visit(const koopa_raw_value_t& value) {
       break;
     default:
       // 其他类型暂时遇不到
-      // cout << kind.tag << "\n";
-      assert(false);
+      cout << kind.tag << "\n";
+      // assert(false);
       break;
   }
 }
