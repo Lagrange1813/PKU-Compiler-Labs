@@ -1,10 +1,12 @@
 #include "ast.hpp"
 
 int cnt;
+int cur_table = -1;
 
 typedef enum {
   CONSTANT,
   VARIABLE,
+  UNDEFINED,
 } value_type;
 
 typedef struct {
@@ -12,26 +14,37 @@ typedef struct {
   int value;
 } stored_value;
 
-std::unordered_map<std::string, std::unique_ptr<stored_value>> table;
+std::vector<std::unordered_map<std::string, std::unique_ptr<stored_value>>*> symbol_tables;
 
 void insertSymbol(const std::string& key, int value, bool isConst) {
   if (isConst) {
     stored_value* value_to_store = new stored_value();
     value_to_store->value = value;
     value_to_store->type = CONSTANT;
-    table[key] = std::unique_ptr<stored_value>(value_to_store);
+    (*symbol_tables[cur_table])[key] = std::unique_ptr<stored_value>(value_to_store);
   } else {
     stored_value* value_to_store = new stored_value();
     value_to_store->value = value;
     value_to_store->type = VARIABLE;
-    table[key] = std::unique_ptr<stored_value>(value_to_store);
+    (*symbol_tables[cur_table])[key] = std::unique_ptr<stored_value>(value_to_store);
   }
 }
 
-std::pair<value_type, int> fetchSymbol(const std::string& key) {
-  if (table.find(key) == table.end())
-    return std::pair<value_type, int>(CONSTANT, -1);
-  return std::pair<value_type, int>(table[key]->type, table[key]->value);
+std::tuple<value_type, int, int> fetchSymbol(const std::string& key) {
+  // if ((*symbol_tables[cur_table]).find(key) == (*symbol_tables[cur_table]).end())
+  //   return std::make_tuple(UNDEFINED, -1, -1);
+  // return std::make_tuple((*symbol_tables[cur_table])[key]->type, (*symbol_tables[cur_table])[key]->value, 1);
+
+  int cur = cur_table;
+  while (cur >= 0) {
+    if ((*symbol_tables[cur]).find(key) == (*symbol_tables[cur]).end()) {
+      cur--;
+      continue;
+    } else {
+      return std::make_tuple((*symbol_tables[cur])[key]->type, (*symbol_tables[cur])[key]->value, cur);
+    }
+  }
+  return std::make_tuple(UNDEFINED, -1, -1);
 }
 
 int search(const ConstExpAST* constExp);
@@ -88,7 +101,7 @@ std::pair<bool, int> DeclWithVarAST::Output() const {
 
 void ConstDeclAST::Dump() const {
   std::cout << "ConstDeclAST { ";
-  std::cout << "BTypeAST { " << bType << "}";
+  std::cout << "BTypeAST { " << bType << " }";
   for (auto& constDef : constDefList) {
     constDef->Dump();
   }
@@ -128,7 +141,7 @@ std::pair<bool, int> ConstInitValAST::Output() const {
 
 void VarDeclAST::Dump() const {
   std::cout << "VarDeclAST { ";
-  std::cout << "BTypeAST { " << bType << "}";
+  std::cout << "BTypeAST { " << bType << " }";
   for (auto& varDef : varDefList) {
     varDef->Dump();
   }
@@ -151,6 +164,8 @@ void VarDefAST::Dump() const {
 std::pair<bool, int> VarDefAST::Output() const {
   str += "  @";
   str += ident;
+  str += "_";
+  str += std::to_string(cur_table);
   str += " = alloc i32\n";
 
   insertSymbol(ident, 0, false);
@@ -168,6 +183,8 @@ std::pair<bool, int> VarDefWithAssignAST::Output() const {
   std::pair<bool, int> result = initVal->Output();
   str += "  @";
   str += ident;
+  str += "_";
+  str += std::to_string(cur_table);
   str += " = alloc i32\n";
 
   if (result.first) {
@@ -175,12 +192,16 @@ std::pair<bool, int> VarDefWithAssignAST::Output() const {
     str += std::to_string(result.second);
     str += ", @";
     str += ident;
+    str += "_";
+    str += std::to_string(cur_table);
     str += "\n";
   } else {
     str += "  store %";
     str += std::to_string(cnt - 1);
     str += ", @";
     str += ident;
+    str += "_";
+    str += std::to_string(cur_table);
     str += "\n";
   }
 
@@ -244,10 +265,18 @@ void BlockAST::Dump() const {
 }
 
 std::pair<bool, int> BlockAST::Output() const {
+  std::unordered_map<std::string, std::unique_ptr<stored_value>> table;
+
+  cur_table = symbol_tables.size();
+  symbol_tables.push_back(&table);
+
   for (auto& blockItem : blockItemList) {
     blockItem->Output();
   }
 
+  symbol_tables.pop_back();
+  cur_table = symbol_tables.size() - 1;
+  
   return std::pair<bool, int>(false, 0);
 }
 
@@ -280,6 +309,11 @@ void StmtWithAssignAST::Dump() const {
 
 std::pair<bool, int> StmtWithAssignAST::Output() const {
   auto ident = ((LValAST*)lVal.get())->ident;
+  auto fetch_result = fetchSymbol(ident);
+
+  if (std::get<0>(fetch_result) == UNDEFINED || std::get<0>(fetch_result) == CONSTANT) {
+    assert(false);
+  }
 
   std::pair<bool, int> result = exp->Output();
 
@@ -288,12 +322,16 @@ std::pair<bool, int> StmtWithAssignAST::Output() const {
     str += std::to_string(result.second);
     str += ", @";
     str += ident;
+    str += "_";
+    str += std::to_string(std::get<2>(fetch_result));
     str += "\n";
   } else {
     str += "  store %";
     str += std::to_string(cnt - 1);
     str += ", @";
     str += ident;
+    str += "_";
+    str += std::to_string(std::get<2>(fetch_result));
     str += "\n";
   }
 
@@ -363,16 +401,20 @@ void LValAST::Dump() const {
 }
 
 std::pair<bool, int> LValAST::Output() const {
-  std::pair<value_type, int> result = fetchSymbol(ident);
-  if (result.first == CONSTANT)
-    return std::pair<bool, int>(true, result.second);
-  else if (result.first == VARIABLE) {
+  std::tuple<value_type, int, int> result = fetchSymbol(ident);
+  if (std::get<0>(result) == CONSTANT)
+    return std::pair<bool, int>(true, std::get<1>(result));
+  else if (std::get<0>(result) == VARIABLE) {
     str += "  %";
     str += std::to_string(cnt);
     cnt++;
     str += " = load @";
     str += ident;
+    str += "_";
+    str += std::to_string(std::get<2>(result));
     str += "\n";
+  } else {
+    assert(false);
   }
   return std::pair<bool, int>(false, 0);
 }
@@ -1303,9 +1345,9 @@ int search(const PrimaryExpWithNumAST* primaryExp) {
 }
 
 int search(const LValAST* lVal) {
-  std::pair<value_type, int> result = fetchSymbol(lVal->ident);
-  if (result.first == CONSTANT)
-    return result.second;
+  auto result = fetchSymbol(lVal->ident);
+  if (std::get<0>(result) == CONSTANT)
+    return std::get<1>(result);
   assert(false);
   return 0;
 }
