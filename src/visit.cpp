@@ -5,7 +5,6 @@
 
 using namespace std;
 
-int asm_cnt = 0;
 unordered_map<koopa_raw_value_t, string> dic;
 int stack_space = 0;
 int stack_cnt = 0;

@@ -14,7 +14,9 @@ class BaseAST {
  public:
   virtual ~BaseAST() = default;
 
+  // Print AST Structures
   virtual void Dump() const = 0;
+  // Output Koopa IR 
   virtual std::pair<bool, int> Output() const = 0;
 };
 

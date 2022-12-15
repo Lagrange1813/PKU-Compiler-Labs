@@ -212,7 +212,10 @@ std::pair<bool, int> FuncDefAST::Output() const {
   str += ident;
   str += "(): ";
   func_type->Output();
+  str += "{\n";
+  str += "\%entry:\n";
   block->Output();
+  str += "}";
 
   return std::pair<bool, int>(false, 0);
 }
@@ -241,12 +244,9 @@ void BlockAST::Dump() const {
 }
 
 std::pair<bool, int> BlockAST::Output() const {
-  str += "{\n";
-  str += "\%entry:\n";
   for (auto& blockItem : blockItemList) {
     blockItem->Output();
   }
-  str += "}";
 
   return std::pair<bool, int>(false, 0);
 }
@@ -309,6 +309,7 @@ void StmtWithExpAST::Dump() const {
 }
 
 std::pair<bool, int> StmtWithExpAST::Output() const {
+  if (exp) (*exp)->Output();
   return std::pair<bool, int>(false, 0);
 }
 
@@ -319,6 +320,7 @@ void StmtWithBlockAST::Dump() const {
 }
 
 std::pair<bool, int> StmtWithBlockAST::Output() const {
+  block->Output();
   return std::pair<bool, int>(false, 0);
 }
 
