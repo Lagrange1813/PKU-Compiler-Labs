@@ -15,6 +15,7 @@ typedef struct {
 } stored_value;
 
 std::vector<std::unordered_map<std::string, std::unique_ptr<stored_value>>*> symbol_tables;
+// std::vector<int>
 
 void insertSymbol(const std::string& key, int value, bool isConst) {
   if (isConst) {
@@ -368,22 +369,56 @@ void StmtWithIfAST::Dump() const {
 }
 
 std::pair<bool, int> StmtWithIfAST::Output() const {
-  exp->Output();
-  str += "  br %";
-  str += std::to_string(cnt-1);
-  str += ", %then, %else\n";
+  auto result = exp->Output();
 
-  str += "%then:\n";
-  if_stmt->Output();
-  str += "  jump %end\n";
-
-  if (else_stmt) {
-    str += "%else:\n";
-    (*else_stmt)->Output();
-    str += "  jump %end\n";
+  if (result.first) {
+    str += "  br ";
+    str += std::to_string(result.second);
+    str += ", %then";
+    str += "_";
+    str += std::to_string(cur_table);
+    str += else_stmt ? ", %else" : ", %end";
+    str += "_";
+    str += std::to_string(cur_table);
+    str += "\n";
+  } else {
+    str += "  br %";
+    str += std::to_string(cnt-1);
+    str += ", %then";
+    str += "_";
+    str += std::to_string(cur_table);
+    str += else_stmt ? ", %else" : ", %end";
+    str += "_";
+    str += std::to_string(cur_table);
+    str += "\n";
   }
 
-  str += "%end:\n";
+  str += "%then";
+  str += "_";
+  str += std::to_string(cur_table);
+  str += ":\n";
+  if_stmt->Output();
+  str += "  jump %end";
+  str += "_";
+  str += std::to_string(cur_table);
+  str += "\n";
+
+  if (else_stmt) {
+    str += "%else";
+    str += "_";
+    str += std::to_string(cur_table);
+    str += ":\n";
+    (*else_stmt)->Output();
+    str += "  jump %end";
+    str += "_";
+    str += std::to_string(cur_table);
+    str += ":\n";
+  }
+
+  str += "%end";
+  str += "_";
+  str += std::to_string(cur_table);
+  str += ":\n";
   return std::pair<bool, int>(false, 0);
 }
 
@@ -874,6 +909,9 @@ std::pair<bool, int> LAndExpAST::Output() const {
   return eqExp->Output();
 }
 
+/// @brief Convert non-0/1 input to 0/1
+/// @param input 
+/// @return bool
 bool filter(int input) {
   if (input == 0 || input == 1) {
     return true;
