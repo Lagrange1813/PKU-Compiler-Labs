@@ -1,7 +1,11 @@
 #include "ast.hpp"
 
+// Koopa IR 返回值计数器
 int cnt;
+// 当前表（实际为当前深度）
 int cur_table = -1;
+// if 计数器（用于标定不同if的块）
+int if_cnt = -1;
 
 typedef enum {
   CONSTANT,
@@ -15,7 +19,8 @@ typedef struct {
 } stored_value;
 
 std::vector<std::unordered_map<std::string, std::unique_ptr<stored_value>>*> symbol_tables;
-int if_cnt = -1;
+
+std::vector<bool> is_block_end;
 
 void insertSymbol(const std::string& key, int value, bool isConst) {
   if (isConst) {
@@ -83,7 +88,8 @@ void DeclWithConstAST::Dump() const {
 }
 
 std::pair<bool, int> DeclWithConstAST::Output() const {
-  return constDecl->Output();
+  constDecl->Output();
+  return std::make_pair(false, 0);
 }
 
 void DeclWithVarAST::Dump() const {
@@ -93,7 +99,8 @@ void DeclWithVarAST::Dump() const {
 }
 
 std::pair<bool, int> DeclWithVarAST::Output() const {
-  return varDecl->Output();
+  varDecl->Output();
+  return std::make_pair(false, 0);
 }
 
 void ConstDeclAST::Dump() const {
@@ -267,7 +274,15 @@ std::pair<bool, int> BlockAST::Output() const {
   cur_table = symbol_tables.size();
   symbol_tables.push_back(&table);
 
+  if (is_block_end.size() <= cur_table) {
+    is_block_end.push_back(false);
+  } else {
+    is_block_end[cur_table] = false;
+  }
+
   for (auto& blockItem : blockItemList) {
+    if (is_block_end[cur_table])
+      return std::make_pair(false, 0);
     blockItem->Output();
   }
 
@@ -356,8 +371,7 @@ void StmtWithBlockAST::Dump() const {
 }
 
 std::pair<bool, int> StmtWithBlockAST::Output() const {
-  block->Output();
-  return std::pair<bool, int>(false, 0);
+  return block->Output();
 }
 
 void StmtWithIfAST::Dump() const {
@@ -411,22 +425,11 @@ std::pair<bool, int> StmtWithIfAST::Output() const {
     str += std::to_string(cur_if);
   }
   str += ":\n";
-  if_stmt->Output();
-  str += "  jump %end";
-  if (cur_if != 0) {
-    str += "_";
-    str += std::to_string(cur_if);
-  }
-  str += "\n";
 
-  if (else_stmt) {
-    str += "%else";
-    if (cur_if != 0) {
-      str += "_";
-      str += std::to_string(cur_if);
-    }
-    str += ":\n";
-    (*else_stmt)->Output();
+  int if_block = cur_table + 1;
+  if_stmt->Output();
+
+  if (!is_block_end[if_block]) {
     str += "  jump %end";
     if (cur_if != 0) {
       str += "_";
@@ -435,14 +438,40 @@ std::pair<bool, int> StmtWithIfAST::Output() const {
     str += "\n";
   }
 
-  str += "%end";
-  if (cur_if != 0) {
-    str += "_";
-    str += std::to_string(cur_if);
-  }
-  str += ":\n";
+  int else_block = cur_table + 1;
 
-  return std::pair<bool, int>(false, 0);
+  if (else_stmt) {
+    str += "%else";
+    if (cur_if != 0) {
+      str += "_";
+      str += std::to_string(cur_if);
+    }
+    str += ":\n";
+
+    (*else_stmt)->Output();
+
+    if (!is_block_end[else_block]) {
+      str += "  jump %end";
+      if (cur_if != 0) {
+        str += "_";
+        str += std::to_string(cur_if);
+      }
+      str += "\n";
+    }
+  }
+
+  if (is_block_end[if_block] && (else_stmt && is_block_end[else_block])) {
+    is_block_end[cur_table] = true;
+  } else {
+    str += "%end";
+    if (cur_if != 0) {
+      str += "_";
+      str += std::to_string(cur_if);
+    }
+    str += ":\n";
+  }
+
+  return std::make_pair(false, 0);
 }
 
 void StmtWithReturnAST::Dump() const {
@@ -464,7 +493,9 @@ std::pair<bool, int> StmtWithReturnAST::Output() const {
     str += "\n";
   }
 
-  return std::pair<bool, int>(false, 0);
+  is_block_end[cur_table] = true;
+
+  return std::make_pair(false, 0);
 }
 
 void ExpAST::Dump() const {
@@ -961,100 +992,94 @@ void LAndExpWithOpAST::Dump() const {
 }
 
 std::pair<bool, int> LAndExpWithOpAST::Output() const {
-  std::pair<bool, int> result_l = lAndExp->Output();
+  str += "  %result_";
+  str += std::to_string(if_cnt + 1);
+  str += " = alloc i32";
+  str += "\n";
+  str += "  store 0, %result_";
+  str += std::to_string(if_cnt + 1);
+  str += "\n";
+
+  auto result_l = lAndExp->Output();
   int cnt_l = cnt - 1;
 
-  std::pair<bool, int> result_r = eqExp->Output();
-  int cnt_r = cnt - 1;
-
-  if (result_l.first && result_r.first) {
-    bool sign_l = filter(result_l.second);
-    bool sign_r = filter(result_r.second);
-
+  if (result_l.first) {
     str += "  %";
     str += std::to_string(cnt);
-    str += " = ";
-    str += "and";
-    str += " ";
-
-    if (sign_l) {
-      str += std::to_string(result_l.second);
-    } else if (sign_r) {
-      str += "%";
-      str += std::to_string(cnt - 1);
-    } else {
-      str += "%";
-      str += std::to_string(cnt - 2);
-    }
-
-    str += ", ";
-
-    if (sign_r) {
-      str += std::to_string(result_r.second);
-    } else {
-      str += "%";
-      str += std::to_string(cnt - 1);
-    }
-
-    str += "\n";
     cnt++;
-
-  } else if (result_l.first) {
-    bool sign_l = filter(result_l.second);
-
-    str += "  %";
-    str += std::to_string(cnt);
-    str += " = ";
-    str += "and";
-    str += " ";
-
-    if (sign_l) {
-      str += std::to_string(result_l.second);
-    } else {
-      str += "%";
-      str += std::to_string(cnt - 1);
-    }
-
-    str += ", %";
-    str += std::to_string(cnt_r);
-    str += "\n";
-    cnt++;
-
-  } else if (result_r.first) {
-    bool sign_r = filter(result_r.second);
-
-    str += "  %";
-    str += std::to_string(cnt);
-    str += " = ";
-    str += "or";
-    str += " %";
-    str += std::to_string(cnt_l);
-    str += ", ";
-
-    if (sign_r) {
-      str += std::to_string(result_r.second);
-    } else {
-      str += "%";
-      str += std::to_string(cnt - 1);
-    }
-
-    str += "\n";
-    cnt++;
-
+    str += " = ne ";
+    str += std::to_string(result_l.second);
+    str += ", 0\n";
   } else {
     str += "  %";
     str += std::to_string(cnt);
-    str += " = ";
-    str += "and";
-    str += " %";
-    str += std::to_string(cnt_l);
-    str += ", %";
-    str += std::to_string(cnt_r);
-    str += "\n";
     cnt++;
+    str += " = ne %";
+    str += std::to_string(cnt_l);
+    str += ", 0\n";
   }
 
-  return std::pair<bool, int>(false, 0);
+  if_cnt++;
+  int cur_if = if_cnt;
+
+  str += "  br %";
+  str += std::to_string(cnt - 1);
+  str += ", %then";
+  str += "_";
+  str += std::to_string(cur_if);
+  str += ", %end";
+  str += "_";
+  str += std::to_string(cur_if);
+  str += "\n";
+
+  str += "%then";
+  str += "_";
+  str += std::to_string(cur_if);
+  str += ":\n";
+
+  auto result_r = eqExp->Output();
+  int cnt_r = cnt - 1;
+
+  if (result_r.first) {
+    str += "  %";
+    str += std::to_string(cnt);
+    cnt++;
+    str += " = ne ";
+    str += std::to_string(result_r.second);
+    str += ", 0\n";
+  } else {
+    str += "  %";
+    str += std::to_string(cnt);
+    cnt++;
+    str += " = ne %";
+    str += std::to_string(cnt_r);
+    str += ", 0\n";
+  }
+
+  str += "  store %";
+  str += std::to_string(cnt - 1);
+  str += ", @result_";
+  str += std::to_string(cur_if);
+  str += "\n";
+
+  str += "  jump %end";
+  str += "_";
+  str += std::to_string(cur_if);
+  str += "\n";
+
+  str += "%end";
+  str += "_";
+  str += std::to_string(cur_if);
+  str += ":\n";
+
+  str += "  %";
+  str += std::to_string(cnt);
+  cnt++;
+  str += " = load @result_";
+  str += std::to_string(cur_if);
+  str += "\n";
+
+  return std::make_pair(false, 0);
 }
 
 void LOrExpAST::Dump() const {
@@ -1076,100 +1101,94 @@ void LOrExpWithOpAST::Dump() const {
 }
 
 std::pair<bool, int> LOrExpWithOpAST::Output() const {
-  std::pair<bool, int> result_l = lOrExp->Output();
+  str += "  %result_";
+  str += std::to_string(if_cnt + 1);
+  str += " = alloc i32";
+  str += "\n";
+  str += "  store 1, %result_";
+  str += std::to_string(if_cnt + 1);
+  str += "\n";
+
+  auto result_l = lOrExp->Output();
   int cnt_l = cnt - 1;
 
-  std::pair<bool, int> result_r = lAndExp->Output();
-  int cnt_r = cnt - 1;
-
-  if (result_l.first && result_r.first) {
-    bool sign_l = filter(result_l.second);
-    bool sign_r = filter(result_r.second);
-
+  if (result_l.first) {
     str += "  %";
     str += std::to_string(cnt);
-    str += " = ";
-    str += "or";
-    str += " ";
-
-    if (sign_l) {
-      str += std::to_string(result_l.second);
-    } else if (sign_r) {
-      str += "%";
-      str += std::to_string(cnt - 1);
-    } else {
-      str += "%";
-      str += std::to_string(cnt - 2);
-    }
-
-    str += ", ";
-
-    if (sign_r) {
-      str += std::to_string(result_r.second);
-    } else {
-      str += "%";
-      str += std::to_string(cnt - 1);
-    }
-
-    str += "\n";
     cnt++;
-
-  } else if (result_l.first) {
-    bool sign_l = filter(result_l.second);
-
-    str += "  %";
-    str += std::to_string(cnt);
-    str += " = ";
-    str += "or";
-    str += " ";
-
-    if (sign_l) {
-      str += std::to_string(result_l.second);
-    } else {
-      str += "%";
-      str += std::to_string(cnt - 1);
-    }
-
-    str += ", %";
-    str += std::to_string(cnt_r);
-    str += "\n";
-    cnt++;
-
-  } else if (result_r.first) {
-    bool sign_r = filter(result_r.second);
-
-    str += "  %";
-    str += std::to_string(cnt);
-    str += " = ";
-    str += "or";
-    str += " %";
-    str += std::to_string(cnt_l);
-    str += ", ";
-
-    if (sign_r) {
-      str += std::to_string(result_r.second);
-    } else {
-      str += "%";
-      str += std::to_string(cnt - 1);
-    }
-
-    str += "\n";
-    cnt++;
-
+    str += " = eq ";
+    str += std::to_string(result_l.second);
+    str += ", 0\n";
   } else {
     str += "  %";
     str += std::to_string(cnt);
-    str += " = ";
-    str += "or";
-    str += " %";
-    str += std::to_string(cnt_l);
-    str += ", %";
-    str += std::to_string(cnt_r);
-    str += "\n";
     cnt++;
+    str += " = eq %";
+    str += std::to_string(cnt_l);
+    str += ", 0\n";
   }
 
-  return std::pair<bool, int>(false, 0);
+  if_cnt++;
+  int cur_if = if_cnt;
+
+  str += "  br %";
+  str += std::to_string(cnt - 1);
+  str += ", %then";
+  str += "_";
+  str += std::to_string(cur_if);
+  str += ", %end";
+  str += "_";
+  str += std::to_string(cur_if);
+  str += "\n";
+
+  str += "%then";
+  str += "_";
+  str += std::to_string(cur_if);
+  str += ":\n";
+
+  auto result_r = lAndExp->Output();
+  int cnt_r = cnt - 1;
+
+  if (result_r.first) {
+    str += "  %";
+    str += std::to_string(cnt);
+    cnt++;
+    str += " = ne ";
+    str += std::to_string(result_r.second);
+    str += ", 0\n";
+  } else {
+    str += "  %";
+    str += std::to_string(cnt);
+    cnt++;
+    str += " = ne %";
+    str += std::to_string(cnt_r);
+    str += ", 0\n";
+  }
+
+  str += "  store %";
+  str += std::to_string(cnt - 1);
+  str += ", @result_";
+  str += std::to_string(cur_if);
+  str += "\n";
+
+  str += "  jump %end";
+  str += "_";
+  str += std::to_string(cur_if);
+  str += "\n";
+
+  str += "%end";
+  str += "_";
+  str += std::to_string(cur_if);
+  str += ":\n";
+
+  str += "  %";
+  str += std::to_string(cnt);
+  cnt++;
+  str += " = load @result_";
+  str += std::to_string(cur_if);
+  str += "\n";
+
+  return std::make_pair(false, 0);
 }
 
 void ConstExpAST::Dump() const {
