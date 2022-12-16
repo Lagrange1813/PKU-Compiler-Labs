@@ -8,6 +8,8 @@ using namespace std;
 unordered_map<koopa_raw_value_t, string> dic;
 int stack_space = 0;
 int stack_cnt = 0;
+
+// Just use for single instructions.
 int reg_cnt = 0;
 
 // 访问 raw program
@@ -52,16 +54,22 @@ void Visit(const koopa_raw_function_t& func) {
   cout << "  .globl " << func->name + 1 << "\n";
   cout << func->name + 1 << ":\n";
 
-  const koopa_raw_slice_t& insts = reinterpret_cast<koopa_raw_basic_block_t>(func->bbs.buffer[0])->insts;
-  int cnt = insts.len;
-  for (size_t i = 0; i < insts.len; ++i) {
-    auto inst = reinterpret_cast<koopa_raw_value_t>(insts.buffer[i]);
-    if (inst->ty->tag == KOOPA_RTT_UNIT) {
-      cnt--;
+  int total = 0;
+
+  for (int i = 0; i < func->bbs.len; i++) {
+    const koopa_raw_slice_t& insts = reinterpret_cast<koopa_raw_basic_block_t>(func->bbs.buffer[i])->insts;
+    int cnt = insts.len;
+    for (size_t i = 0; i < insts.len; ++i) {
+      auto inst = reinterpret_cast<koopa_raw_value_t>(insts.buffer[i]);
+      if (inst->ty->tag == KOOPA_RTT_UNIT) {
+        cnt--;
+      }
     }
+    total += cnt;
   }
-  stack_space = cnt * 4;
-  cout << "  addi sp, sp, " << -(cnt * 4) << "\n";
+
+  stack_space = total * 4;
+  cout << "  addi sp, sp, " << -(total * 4) << "\n";
 
   // 访问所有基本块
   Visit(func->bbs);
@@ -70,7 +78,8 @@ void Visit(const koopa_raw_function_t& func) {
 // 访问基本块
 void Visit(const koopa_raw_basic_block_t& bb) {
   // 执行一些其他的必要操作
-  // cout << bb->name << "\n";
+  if (strcmp(bb->name + 1, "entry")) 
+    cout << bb->name + 1 << ":\n";
   // 访问所有指令
   Visit(bb->insts);
 }
@@ -98,6 +107,14 @@ void Visit(const koopa_raw_value_t& value) {
     case KOOPA_RVT_BINARY:
       // 访问 binary 指令
       Visit(kind.data.binary, value);
+      break;
+    case KOOPA_RVT_BRANCH:
+      // 访问 return 指令
+      Visit(kind.data.branch);
+      break;
+    case KOOPA_RVT_JUMP:
+      // 访问 return 指令
+      Visit(kind.data.jump);
       break;
     case KOOPA_RVT_RETURN:
       // 访问 return 指令
@@ -146,22 +163,6 @@ void Visit(const koopa_raw_store_t& store) {
     stack_cnt++;
   }
   cout << "  sw " << dic[store.value] << ", " << dic[store.dest] << "\n";
-}
-
-void Visit(const koopa_raw_return_t& ret) {
-  if (ret.value->kind.tag == KOOPA_RVT_INTEGER) {
-    cout << "  li a0, ";
-    Visit(ret.value->kind.data.integer);
-    cout << "\n";
-  } else if (ret.value->kind.tag == KOOPA_RVT_BINARY || ret.value->kind.tag == KOOPA_RVT_LOAD) {
-    cout << "  lw a0, " << dic[ret.value] << "\n";
-  } else {
-    cout << "  ERROR: Undefined Tag: " << ret.value->kind.tag << "\n";
-  }
-
-  cout << "  addi sp, sp, " << stack_space << "\n";
-  cout << "  ret"
-       << "\n";
 }
 
 void Visit(const koopa_raw_integer_t& integer) {
@@ -480,4 +481,31 @@ bool isNum(const koopa_raw_value_t value) {
   dic[value] = "t" + to_string(reg_cnt);
   reg_cnt++;
   return false;
+}
+
+void Visit(const koopa_raw_branch_t& branch) {
+  reg_cnt = 0;
+  Search(branch.cond);
+  cout << "  bnez " << dic[branch.cond] << ", " << branch.true_bb->name + 1 << "\n";
+  cout << "  j " << branch.false_bb->name + 1 << "\n";
+}
+
+void Visit(const koopa_raw_jump_t& jump) {
+  cout << "  j " << jump.target->name + 1 << "\n";
+}
+
+void Visit(const koopa_raw_return_t& ret) {
+  if (ret.value->kind.tag == KOOPA_RVT_INTEGER) {
+    cout << "  li a0, ";
+    Visit(ret.value->kind.data.integer);
+    cout << "\n";
+  } else if (ret.value->kind.tag == KOOPA_RVT_BINARY || ret.value->kind.tag == KOOPA_RVT_LOAD) {
+    cout << "  lw a0, " << dic[ret.value] << "\n";
+  } else {
+    cout << "  ERROR: Undefined Tag: " << ret.value->kind.tag << "\n";
+  }
+
+  cout << "  addi sp, sp, " << stack_space << "\n";
+  cout << "  ret"
+       << "\n";
 }
