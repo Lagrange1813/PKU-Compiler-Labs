@@ -15,7 +15,7 @@ typedef struct {
 } stored_value;
 
 std::vector<std::unordered_map<std::string, std::unique_ptr<stored_value>>*> symbol_tables;
-// std::vector<int>
+int if_cnt = -1;
 
 void insertSymbol(const std::string& key, int value, bool isConst) {
   if (isConst) {
@@ -364,61 +364,84 @@ void StmtWithIfAST::Dump() const {
   std::cout << "StmtWithIfAST { ";
   exp->Dump();
   if_stmt->Dump();
-  if (else_stmt) (*else_stmt)->Dump();
+  if (else_stmt)
+    (*else_stmt)->Dump();
   std::cout << " }";
 }
 
 std::pair<bool, int> StmtWithIfAST::Output() const {
   auto result = exp->Output();
 
+  if_cnt++;
+  int cur_if = if_cnt;
+
   if (result.first) {
     str += "  br ";
     str += std::to_string(result.second);
     str += ", %then";
-    str += "_";
-    str += std::to_string(cur_table);
+    if (cur_if != 0) {
+      str += "_";
+      str += std::to_string(cur_if);
+    }
     str += else_stmt ? ", %else" : ", %end";
-    str += "_";
-    str += std::to_string(cur_table);
+    if (cur_if != 0) {
+      str += "_";
+      str += std::to_string(cur_if);
+    }
     str += "\n";
   } else {
     str += "  br %";
-    str += std::to_string(cnt-1);
+    str += std::to_string(cnt - 1);
     str += ", %then";
-    str += "_";
-    str += std::to_string(cur_table);
+    if (cur_if != 0) {
+      str += "_";
+      str += std::to_string(cur_if);
+    }
     str += else_stmt ? ", %else" : ", %end";
-    str += "_";
-    str += std::to_string(cur_table);
+    if (cur_if != 0) {
+      str += "_";
+      str += std::to_string(cur_if);
+    }
     str += "\n";
   }
 
   str += "%then";
-  str += "_";
-  str += std::to_string(cur_table);
+  if (cur_if != 0) {
+    str += "_";
+    str += std::to_string(cur_if);
+  }
   str += ":\n";
   if_stmt->Output();
   str += "  jump %end";
-  str += "_";
-  str += std::to_string(cur_table);
+  if (cur_if != 0) {
+    str += "_";
+    str += std::to_string(cur_if);
+  }
   str += "\n";
 
   if (else_stmt) {
     str += "%else";
-    str += "_";
-    str += std::to_string(cur_table);
+    if (cur_if != 0) {
+      str += "_";
+      str += std::to_string(cur_if);
+    }
     str += ":\n";
     (*else_stmt)->Output();
     str += "  jump %end";
-    str += "_";
-    str += std::to_string(cur_table);
-    str += ":\n";
+    if (cur_if != 0) {
+      str += "_";
+      str += std::to_string(cur_if);
+    }
+    str += "\n";
   }
 
   str += "%end";
-  str += "_";
-  str += std::to_string(cur_table);
+  if (cur_if != 0) {
+    str += "_";
+    str += std::to_string(cur_if);
+  }
   str += ":\n";
+
   return std::pair<bool, int>(false, 0);
 }
 
@@ -910,7 +933,7 @@ std::pair<bool, int> LAndExpAST::Output() const {
 }
 
 /// @brief Convert non-0/1 input to 0/1
-/// @param input 
+/// @param input
 /// @return bool
 bool filter(int input) {
   if (input == 0 || input == 1) {
