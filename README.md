@@ -10,7 +10,7 @@
 - **中端** 将 AST 转换为 IR，完成机器无关优化
 - **后端** 将 IR 转换为目标平台汇编代码，完成机器相关优化
 
-```enbf
+```ebnf
 CompUnit  ::= FuncDef;
 
 FuncDef   ::= FuncType IDENT "(" ")" Block;
@@ -33,7 +33,7 @@ main:
 
 ### Lv3. 表达式
 
-```enbf
+```ebnf
 CompUnit    ::= FuncDef;
 
 FuncDef     ::= FuncType IDENT "(" ")" Block;
@@ -57,7 +57,7 @@ LOrExp      ::= LAndExp | LOrExp "||" LAndExp;
 
 ### Lv4. 常量与变量
 
-```enbf
+```ebnf
 CompUnit      ::= FuncDef;
 
 Decl          ::= ConstDecl | VarDecl;
@@ -96,7 +96,7 @@ ConstExp      ::= Exp;
 
 ### Lv5. 语句块和作用域
 
-```enbf
+```ebnf
 CompUnit      ::= FuncDef;
 
 Decl          ::= ConstDecl | VarDecl;
@@ -135,7 +135,7 @@ ConstExp      ::= Exp;
 
 ### Lv6. `if` 语句
 
-```enbf
+```ebnf
 CompUnit      ::= FuncDef;
 
 Decl          ::= ConstDecl | VarDecl;
@@ -156,6 +156,49 @@ Stmt          ::= LVal "=" Exp ";"
                 | [Exp] ";"
                 | Block
                 | "if" "(" Exp ")" Stmt ["else" Stmt]
+                | "return" [Exp] ";";
+
+Exp           ::= LOrExp;
+LVal          ::= IDENT;
+PrimaryExp    ::= "(" Exp ")" | LVal | Number;
+Number        ::= INT_CONST;
+UnaryExp      ::= PrimaryExp | UnaryOp UnaryExp;
+UnaryOp       ::= "+" | "-" | "!";
+MulExp        ::= UnaryExp | MulExp ("*" | "/" | "%") UnaryExp;
+AddExp        ::= MulExp | AddExp ("+" | "-") MulExp;
+RelExp        ::= AddExp | RelExp ("<" | ">" | "<=" | ">=") AddExp;
+EqExp         ::= RelExp | EqExp ("==" | "!=") RelExp;
+LAndExp       ::= EqExp | LAndExp "&&" EqExp;
+LOrExp        ::= LAndExp | LOrExp "||" LAndExp;
+ConstExp      ::= Exp;
+```
+
+### Lv7.
+
+```ebnf
+CompUnit      ::= FuncDef;
+
+Decl          ::= ConstDecl | VarDecl;
+ConstDecl     ::= "const" BType ConstDef {"," ConstDef} ";";
+BType         ::= "int";
+ConstDef      ::= IDENT "=" ConstInitVal;
+ConstInitVal  ::= ConstExp;
+VarDecl       ::= BType VarDef {"," VarDef} ";";
+VarDef        ::= IDENT | IDENT "=" InitVal;
+InitVal       ::= Exp;
+
+FuncDef       ::= FuncType IDENT "(" ")" Block;
+FuncType      ::= "int";
+
+Block         ::= "{" {BlockItem} "}";
+BlockItem     ::= Decl | Stmt;
+Stmt          ::= LVal "=" Exp ";"
+                | [Exp] ";"
+                | Block
+                | "if" "(" Exp ")" Stmt ["else" Stmt]
+                | "while" "(" Exp ")" Stmt
+                | "break" ";"
+                | "continue" ";"
                 | "return" [Exp] ";";
 
 Exp           ::= LOrExp;
