@@ -1,11 +1,15 @@
 #include "ast.hpp"
 
 // Koopa IR 返回值计数器
-int cnt;
-// 当前表（实际为当前深度）
-int cur_table = -1;
-// if 计数器（用于标定不同if的块）
+int cnt = 0;
+// if 计数器（用于标定ir中不同if的基本块 then else end）
 int if_cnt = -1;
+// 当前块
+int cur_block = -1;
+// 父子块关系记录
+std::unordered_map<int, int> parent;
+// 记录当前块是否终止
+std::vector<bool> is_block_end;
 
 typedef enum {
   CONSTANT,
@@ -20,27 +24,25 @@ typedef struct {
 
 std::vector<std::unordered_map<std::string, std::unique_ptr<stored_value>>*> symbol_tables;
 
-std::vector<bool> is_block_end;
-
 void insertSymbol(const std::string& key, int value, bool isConst) {
   if (isConst) {
     stored_value* value_to_store = new stored_value();
     value_to_store->value = value;
     value_to_store->type = CONSTANT;
-    (*symbol_tables[cur_table])[key] = std::unique_ptr<stored_value>(value_to_store);
+    (*symbol_tables[cur_block])[key] = std::unique_ptr<stored_value>(value_to_store);
   } else {
     stored_value* value_to_store = new stored_value();
     value_to_store->value = value;
     value_to_store->type = VARIABLE;
-    (*symbol_tables[cur_table])[key] = std::unique_ptr<stored_value>(value_to_store);
+    (*symbol_tables[cur_block])[key] = std::unique_ptr<stored_value>(value_to_store);
   }
 }
 
 std::tuple<value_type, int, int> fetchSymbol(const std::string& key) {
-  int cur = cur_table;
+  int cur = cur_block;
   while (cur >= 0) {
     if ((*symbol_tables[cur]).find(key) == (*symbol_tables[cur]).end()) {
-      cur--;
+      cur = parent[cur];
       continue;
     } else {
       return std::make_tuple((*symbol_tables[cur])[key]->type, (*symbol_tables[cur])[key]->value, cur);
@@ -169,7 +171,7 @@ std::pair<bool, int> VarDefAST::Output() const {
   str += "  @";
   str += ident;
   str += "_";
-  str += std::to_string(cur_table);
+  str += std::to_string(cur_block);
   str += " = alloc i32\n";
 
   insertSymbol(ident, 0, false);
@@ -188,7 +190,7 @@ std::pair<bool, int> VarDefWithAssignAST::Output() const {
   str += "  @";
   str += ident;
   str += "_";
-  str += std::to_string(cur_table);
+  str += std::to_string(cur_block);
   str += " = alloc i32\n";
 
   if (result.first) {
@@ -197,7 +199,7 @@ std::pair<bool, int> VarDefWithAssignAST::Output() const {
     str += ", @";
     str += ident;
     str += "_";
-    str += std::to_string(cur_table);
+    str += std::to_string(cur_block);
     str += "\n";
   } else {
     str += "  store %";
@@ -205,7 +207,7 @@ std::pair<bool, int> VarDefWithAssignAST::Output() const {
     str += ", @";
     str += ident;
     str += "_";
-    str += std::to_string(cur_table);
+    str += std::to_string(cur_block);
     str += "\n";
   }
 
@@ -271,23 +273,28 @@ void BlockAST::Dump() const {
 std::pair<bool, int> BlockAST::Output() const {
   std::unordered_map<std::string, std::unique_ptr<stored_value>> table;
 
-  cur_table = symbol_tables.size();
+  // cur_table = symbol_tables.size();
+  int parent_block = cur_block;
+  cur_block = symbol_tables.size();
+  parent[cur_block] = parent_block;
   symbol_tables.push_back(&table);
+  // block_cnt++;
 
-  if (is_block_end.size() <= cur_table) {
-    is_block_end.push_back(false);
-  } else {
-    is_block_end[cur_table] = false;
-  }
+  // if (is_block_end.size() <= cur_table) {
+  //   is_block_end.push_back(false);
+  // } else {
+  //   is_block_end[cur_table] = false;
+  // }
 
   for (auto& blockItem : blockItemList) {
-    if (is_block_end[cur_table])
-      return std::make_pair(false, 0);
+    // if (is_block_end[cur_table])
+    //   return std::make_pair(false, 0);
     blockItem->Output();
   }
 
-  symbol_tables.pop_back();
-  cur_table = symbol_tables.size() - 1;
+  // symbol_tables.pop_back();
+  // cur_table = symbol_tables.size() - 1;
+  cur_block = parent[cur_block];
 
   return std::pair<bool, int>(false, 0);
 }
@@ -426,19 +433,19 @@ std::pair<bool, int> StmtWithIfAST::Output() const {
   }
   str += ":\n";
 
-  int if_block = cur_table + 1;
+  // int if_block = cur_table + 1;
   if_stmt->Output();
 
-  if (!is_block_end[if_block]) {
+  // if (!is_block_end[if_block]) {
     str += "  jump %end";
     if (cur_if != 0) {
       str += "_";
       str += std::to_string(cur_if);
     }
     str += "\n";
-  }
+  // }
 
-  int else_block = cur_table + 1;
+  // int else_block = cur_table + 1;
 
   if (else_stmt) {
     str += "%else";
@@ -450,26 +457,26 @@ std::pair<bool, int> StmtWithIfAST::Output() const {
 
     (*else_stmt)->Output();
 
-    if (!is_block_end[else_block]) {
+    // if (!is_block_end[else_block]) {
       str += "  jump %end";
       if (cur_if != 0) {
         str += "_";
         str += std::to_string(cur_if);
       }
       str += "\n";
-    }
+    // }
   }
 
-  if (is_block_end[if_block] && (else_stmt && is_block_end[else_block])) {
-    is_block_end[cur_table] = true;
-  } else {
+  // if (is_block_end[if_block] && (else_stmt && is_block_end[else_block])) {
+    // is_block_end[cur_table] = true;
+  // } else {
     str += "%end";
     if (cur_if != 0) {
       str += "_";
       str += std::to_string(cur_if);
     }
     str += ":\n";
-  }
+  // }
 
   return std::make_pair(false, 0);
 }
@@ -493,7 +500,7 @@ std::pair<bool, int> StmtWithReturnAST::Output() const {
     str += "\n";
   }
 
-  is_block_end[cur_table] = true;
+  // is_block_end[cur_table] = true;
 
   return std::make_pair(false, 0);
 }
