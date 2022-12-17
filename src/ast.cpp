@@ -273,29 +273,24 @@ void BlockAST::Dump() const {
 std::pair<bool, int> BlockAST::Output() const {
   std::unordered_map<std::string, std::unique_ptr<stored_value>> table;
 
-  // cur_table = symbol_tables.size();
   int parent_block = cur_block;
   cur_block = symbol_tables.size();
   parent[cur_block] = parent_block;
   symbol_tables.push_back(&table);
-  // block_cnt++;
 
-  // if (is_block_end.size() <= cur_table) {
-  //   is_block_end.push_back(false);
-  // } else {
-  //   is_block_end[cur_table] = false;
-  // }
+  is_block_end.push_back(false);
 
   for (auto& blockItem : blockItemList) {
-    // if (is_block_end[cur_table])
-    //   return std::make_pair(false, 0);
+    if (is_block_end[cur_block])
+      break;
     blockItem->Output();
   }
 
-  // symbol_tables.pop_back();
-  // cur_table = symbol_tables.size() - 1;
+  
+  if (parent_block != -1) {
+    is_block_end[parent_block] = is_block_end[cur_block];
+  }
   cur_block = parent[cur_block];
-
   return std::pair<bool, int>(false, 0);
 }
 
@@ -433,19 +428,22 @@ std::pair<bool, int> StmtWithIfAST::Output() const {
   }
   str += ":\n";
 
-  // int if_block = cur_table + 1;
   if_stmt->Output();
 
-  // if (!is_block_end[if_block]) {
+  if (!is_block_end[cur_block]) {
     str += "  jump %end";
     if (cur_if != 0) {
       str += "_";
       str += std::to_string(cur_if);
     }
     str += "\n";
-  // }
+  }
 
   // int else_block = cur_table + 1;
+  bool if_end = is_block_end[cur_block];
+  is_block_end[cur_block] = false;
+
+  bool else_end = false;
 
   if (else_stmt) {
     str += "%else";
@@ -457,26 +455,30 @@ std::pair<bool, int> StmtWithIfAST::Output() const {
 
     (*else_stmt)->Output();
 
-    // if (!is_block_end[else_block]) {
+    if (!is_block_end[cur_block]) {
       str += "  jump %end";
       if (cur_if != 0) {
         str += "_";
         str += std::to_string(cur_if);
       }
       str += "\n";
-    // }
+    } else {
+      else_end = true;
+    }
   }
 
-  // if (is_block_end[if_block] && (else_stmt && is_block_end[else_block])) {
-    // is_block_end[cur_table] = true;
-  // } else {
+  is_block_end[cur_block] = false;
+
+  if (if_end && (else_stmt && else_end)) {
+    is_block_end[cur_block] = true;
+  } else {
     str += "%end";
     if (cur_if != 0) {
       str += "_";
       str += std::to_string(cur_if);
     }
     str += ":\n";
-  // }
+  }
 
   return std::make_pair(false, 0);
 }
@@ -500,7 +502,7 @@ std::pair<bool, int> StmtWithReturnAST::Output() const {
     str += "\n";
   }
 
-  // is_block_end[cur_table] = true;
+  is_block_end[cur_block] = true;
 
   return std::make_pair(false, 0);
 }
