@@ -1009,6 +1009,9 @@ std::pair<bool, int> LAndExpWithOpAST::Output() const {
   str += std::to_string(if_cnt + 1);
   str += "\n";
 
+  if_cnt++;
+  int cur_if = if_cnt;
+
   auto result_l = lAndExp->Output();
   int cnt_l = cnt - 1;
 
@@ -1027,9 +1030,6 @@ std::pair<bool, int> LAndExpWithOpAST::Output() const {
     str += std::to_string(cnt_l);
     str += ", 0\n";
   }
-
-  if_cnt++;
-  int cur_if = if_cnt;
 
   str += "  br %";
   str += std::to_string(cnt - 1);
@@ -1067,7 +1067,7 @@ std::pair<bool, int> LAndExpWithOpAST::Output() const {
 
   str += "  store %";
   str += std::to_string(cnt - 1);
-  str += ", @result_";
+  str += ", %result_";
   str += std::to_string(cur_if);
   str += "\n";
 
@@ -1084,7 +1084,7 @@ std::pair<bool, int> LAndExpWithOpAST::Output() const {
   str += "  %";
   str += std::to_string(cnt);
   cnt++;
-  str += " = load @result_";
+  str += " = load %result_";
   str += std::to_string(cur_if);
   str += "\n";
 
@@ -1118,6 +1118,9 @@ std::pair<bool, int> LOrExpWithOpAST::Output() const {
   str += std::to_string(if_cnt + 1);
   str += "\n";
 
+  if_cnt++;
+  int cur_if = if_cnt;
+
   auto result_l = lOrExp->Output();
   int cnt_l = cnt - 1;
 
@@ -1136,9 +1139,6 @@ std::pair<bool, int> LOrExpWithOpAST::Output() const {
     str += std::to_string(cnt_l);
     str += ", 0\n";
   }
-
-  if_cnt++;
-  int cur_if = if_cnt;
 
   str += "  br %";
   str += std::to_string(cnt - 1);
@@ -1176,7 +1176,7 @@ std::pair<bool, int> LOrExpWithOpAST::Output() const {
 
   str += "  store %";
   str += std::to_string(cnt - 1);
-  str += ", @result_";
+  str += ", %result_";
   str += std::to_string(cur_if);
   str += "\n";
 
@@ -1193,7 +1193,7 @@ std::pair<bool, int> LOrExpWithOpAST::Output() const {
   str += "  %";
   str += std::to_string(cnt);
   cnt++;
-  str += " = load @result_";
+  str += " = load %result_";
   str += std::to_string(cur_if);
   str += "\n";
 
