@@ -16,12 +16,21 @@ class BaseAST {
 
   // Print AST Structures
   virtual void Dump() const = 0;
-  // Output Koopa IR 
+  // Output Koopa IR
   virtual std::pair<bool, int> Output() const = 0;
 };
 
 class CompUnitAST : public BaseAST {
  public:
+  std::unique_ptr<BaseAST> sub;
+
+  void Dump() const override;
+  std::pair<bool, int> Output() const override;
+};
+
+class CompUnitSubAST : public BaseAST {
+ public:
+  std::optional<std::unique_ptr<BaseAST>> compUnit;
   std::unique_ptr<BaseAST> func_def;
 
   void Dump() const override;
@@ -46,8 +55,16 @@ class DeclWithVarAST : public BaseAST {
 
 class ConstDeclAST : public BaseAST {
  public:
-  std::string bType;
+  std::unique_ptr<BaseAST> bType;
   std::vector<std::unique_ptr<BaseAST>> constDefList;
+
+  void Dump() const override;
+  std::pair<bool, int> Output() const override;
+};
+
+class BTypeAST : public BaseAST {
+ public:
+  std::string type;
 
   void Dump() const override;
   std::pair<bool, int> Output() const override;
@@ -72,7 +89,7 @@ class ConstInitValAST : public BaseAST {
 
 class VarDeclAST : public BaseAST {
  public:
-  std::string bType;
+  std::unique_ptr<BaseAST> bType;
   std::vector<std::unique_ptr<BaseAST>> varDefList;
 
   void Dump() const override;
@@ -108,6 +125,7 @@ class FuncDefAST : public BaseAST {
  public:
   std::unique_ptr<BaseAST> func_type;
   std::string ident;
+  std::optional<std::unique_ptr<BaseAST>> params;
   std::unique_ptr<BaseAST> block;
 
   void Dump() const override;
@@ -117,6 +135,23 @@ class FuncDefAST : public BaseAST {
 class FuncTypeAST : public BaseAST {
  public:
   std::string type;
+
+  void Dump() const override;
+  std::pair<bool, int> Output() const override;
+};
+
+class FuncFParamsAST : public BaseAST {
+ public:
+  std::vector<std::unique_ptr<BaseAST>> paramList;
+
+  void Dump() const override;
+  std::pair<bool, int> Output() const override;
+};
+
+class FuncFParamAST : public BaseAST {
+ public:
+  std::unique_ptr<BaseAST> bType;
+  std::string ident;
 
   void Dump() const override;
   std::pair<bool, int> Output() const override;
@@ -258,10 +293,27 @@ class UnaryExpAST : public BaseAST {
   std::pair<bool, int> Output() const override;
 };
 
+class UnaryExpWithFuncAST : public BaseAST {
+ public:
+  std::string ident;
+  std::optional<std::unique_ptr<BaseAST>> params;
+
+  void Dump() const override;
+  std::pair<bool, int> Output() const override;
+};
+
 class UnaryExpWithOpAST : public BaseAST {
  public:
   char unaryOp;
   std::unique_ptr<BaseAST> unaryExp;
+
+  void Dump() const override;
+  std::pair<bool, int> Output() const override;
+};
+
+class FuncRParamsAST : public BaseAST {
+ public:
+  std::vector<std::unique_ptr<BaseAST>> paramList;
 
   void Dump() const override;
   std::pair<bool, int> Output() const override;

@@ -80,11 +80,26 @@ int search(const LValAST* lVal);
 
 void CompUnitAST::Dump() const {
   std::cout << "CompUnitAST { ";
-  func_def->Dump();
+  sub->Dump();
   std::cout << " }";
 }
 
 std::pair<bool, int> CompUnitAST::Output() const {
+  sub->Output();
+  return std::pair<bool, int>(false, 0);
+}
+
+void CompUnitSubAST::Dump() const {
+  std::cout << "CompUnitSubAST { ";
+  if (compUnit)
+    (*compUnit)->Dump();
+  func_def->Dump();
+  std::cout << " }";
+}
+
+std::pair<bool, int> CompUnitSubAST::Output() const {
+  if (compUnit)
+    (*compUnit)->Output();
   func_def->Output();
   return std::pair<bool, int>(false, 0);
 }
@@ -113,7 +128,7 @@ std::pair<bool, int> DeclWithVarAST::Output() const {
 
 void ConstDeclAST::Dump() const {
   std::cout << "ConstDeclAST { ";
-  std::cout << "BTypeAST { " << bType << " }";
+  bType->Dump();
   for (auto& constDef : constDefList) {
     constDef->Dump();
   }
@@ -127,9 +142,17 @@ std::pair<bool, int> ConstDeclAST::Output() const {
   return std::pair<bool, int>(false, 0);
 }
 
+void BTypeAST::Dump() const {
+  std::cout << "BTypeAST { " << type << " }";
+}
+
+std::pair<bool, int> BTypeAST::Output() const {
+  return std::pair<bool, int>(false, 0);
+}
+
 void ConstDefAST::Dump() const {
   std::cout << "ConstDefAST { ";
-  std::cout << "Ident { " << ident << "}";
+  std::cout << " Ident { " << ident << " }";
   constInitVal->Dump();
   std::cout << " }";
 }
@@ -153,7 +176,7 @@ std::pair<bool, int> ConstInitValAST::Output() const {
 
 void VarDeclAST::Dump() const {
   std::cout << "VarDeclAST { ";
-  std::cout << "BTypeAST { " << bType << " }";
+  bType->Dump();
   for (auto& varDef : varDefList) {
     varDef->Dump();
   }
@@ -169,7 +192,7 @@ std::pair<bool, int> VarDeclAST::Output() const {
 
 void VarDefAST::Dump() const {
   std::cout << "VarDefAST { ";
-  std::cout << "Ident { " << ident << "}";
+  std::cout << "Ident { " << ident << " }";
   std::cout << " }";
 }
 
@@ -234,7 +257,9 @@ std::pair<bool, int> InitValAST::Output() const {
 void FuncDefAST::Dump() const {
   std::cout << "FuncDefAST { ";
   func_type->Dump();
-  std::cout << ", " << ident << ", ";
+  std::cout << " Ident { " << ident << " }";
+  if (params)
+    (*params)->Dump();
   block->Dump();
   std::cout << " }";
 }
@@ -265,6 +290,32 @@ std::pair<bool, int> FuncTypeAST::Output() const {
     str += " ";
   }
 
+  return std::pair<bool, int>(false, 0);
+}
+
+void FuncFParamsAST::Dump() const {
+  std::cout << "FuncFParamsAST { ";
+  for (auto& param : paramList) {
+    param->Dump();
+  }
+  std::cout << " }";
+}
+
+std::pair<bool, int> FuncFParamsAST::Output() const {
+  for (auto& param : paramList) {
+    param->Output();
+  }
+  return std::pair<bool, int>(false, 0);
+}
+
+void FuncFParamAST::Dump() const {
+  std::cout << "FuncFParamAST { ";
+  bType->Dump();
+  std::cout << " Ident { " << ident << " }";
+  std::cout << " }";
+}
+
+std::pair<bool, int> FuncFParamAST::Output() const {
   return std::pair<bool, int>(false, 0);
 }
 
@@ -690,6 +741,18 @@ std::pair<bool, int> UnaryExpAST::Output() const {
   return primaryExp->Output();
 }
 
+void UnaryExpWithFuncAST::Dump() const {
+  std::cout << "UnaryExpAST { ";
+  std::cout << "Ident { " << ident << " }";
+  if (params)
+    (*params)->Dump();
+  std::cout << " }";
+}
+
+std::pair<bool, int> UnaryExpWithFuncAST::Output() const {
+  return std::make_pair(false, 0);
+}
+
 void UnaryExpWithOpAST::Dump() const {
   std::cout << "UnaryExpWithOpAST { ";
   std::cout << "UnaryOpAST { " << unaryOp << " }";
@@ -737,6 +800,18 @@ std::pair<bool, int> UnaryExpWithOpAST::Output() const {
   }
 
   return std::pair<bool, int>(false, 0);
+}
+
+void FuncRParamsAST::Dump() const {
+  std::cout << "FuncRParamsAST { ";
+  for (auto& param : paramList) {
+    param->Dump();
+  }
+  std::cout << " }";
+}
+
+std::pair<bool, int> FuncRParamsAST::Output() const {
+  return std::make_pair(false, 0);
 }
 
 void MulExpAST::Dump() const {
