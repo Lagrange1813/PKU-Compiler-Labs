@@ -4,6 +4,7 @@
 int cnt = 0;
 // if 计数器（用于标定ir中不同if的基本块 then else end）
 int if_cnt = -1;
+int while_cnt = -1;
 // 当前块
 int cur_block = -1;
 // 父子块关系记录
@@ -480,6 +481,57 @@ std::pair<bool, int> StmtWithIfAST::Output() const {
     str += ":\n";
   }
 
+  return std::make_pair(false, 0);
+}
+
+void StmtWithWhileAST::Dump() const {
+  std::cout << "StmtWithWhileAST { ";
+  exp->Dump();
+  stmt->Dump();
+  std::cout << " }";
+}
+
+std::pair<bool, int> StmtWithWhileAST::Output() const {
+  while_cnt++;
+  int cur_while = while_cnt;
+
+  str += "  jump %while_";
+  str += std::to_string(cur_while);
+  str += "_entry\n";
+
+  str += "%while_";
+  str += std::to_string(cur_while);
+  str += "_entry:\n";
+
+  exp->Output();
+
+  str += "  br %";
+  str += std::to_string(cnt-1);
+  str += ", %while_";
+  str += std::to_string(cur_while);
+  str += "_body, %while_";
+  str += std::to_string(cur_while);
+  str += "_end\n";
+
+  str += "%while_";
+  str += std::to_string(cur_while);
+  str += "_body:\n";
+
+  stmt->Output();
+
+  if (!is_block_end[cur_block]) {
+    str += "  jump %while_";
+    str += std::to_string(cur_while);
+    str += "_entry";
+    str += "\n";
+  }
+
+  is_block_end[cur_block] = false;
+
+  str += "%while_";
+  str += std::to_string(cur_while);
+  str += "_end:\n";
+  
   return std::make_pair(false, 0);
 }
 

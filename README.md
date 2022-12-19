@@ -173,7 +173,7 @@ LOrExp        ::= LAndExp | LOrExp "||" LAndExp;
 ConstExp      ::= Exp;
 ```
 
-### Lv7.
+### Lv7. `while` 语句
 
 ```ebnf
 CompUnit      ::= FuncDef;
@@ -215,3 +215,4 @@ LAndExp       ::= EqExp | LAndExp "&&" EqExp;
 LOrExp        ::= LAndExp | LOrExp "||" LAndExp;
 ConstExp      ::= Exp;
 ```
+

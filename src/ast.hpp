@@ -181,6 +181,15 @@ class StmtWithIfAST : public BaseAST {
   std::pair<bool, int> Output() const override;
 };
 
+class StmtWithWhileAST : public BaseAST {
+ public:
+  std::unique_ptr<BaseAST> exp;
+  std::unique_ptr<BaseAST> stmt;
+
+  void Dump() const override;
+  std::pair<bool, int> Output() const override;
+};
+
 class StmtWithReturnAST : public BaseAST {
  public:
   std::unique_ptr<BaseAST> exp;
