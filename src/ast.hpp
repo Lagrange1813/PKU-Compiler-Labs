@@ -190,6 +190,18 @@ class StmtWithWhileAST : public BaseAST {
   std::pair<bool, int> Output() const override;
 };
 
+class StmtWithBreakAST : public BaseAST {
+ public:
+  void Dump() const override;
+  std::pair<bool, int> Output() const override;
+};
+
+class StmtWithContinueAST : public BaseAST {
+ public:
+  void Dump() const override;
+  std::pair<bool, int> Output() const override;
+};
+
 class StmtWithReturnAST : public BaseAST {
  public:
   std::unique_ptr<BaseAST> exp;

@@ -4,6 +4,9 @@
 int cnt = 0;
 // if 计数器（用于标定ir中不同if的基本块 then else end）
 int if_cnt = -1;
+// 记录 while 当前层数序号
+int while_level = -1;
+// while 计数器（标定不同while的基本块）
 int while_cnt = -1;
 // 当前块
 int cur_block = -1;
@@ -11,6 +14,8 @@ int cur_block = -1;
 std::unordered_map<int, int> parent;
 // 记录当前块是否终止
 std::vector<bool> is_block_end;
+// 记录 while_level 与 while_cnt 对应关系
+std::unordered_map<int, int> level_to_cnt;
 
 typedef enum {
   CONSTANT,
@@ -287,7 +292,6 @@ std::pair<bool, int> BlockAST::Output() const {
     blockItem->Output();
   }
 
-  
   if (parent_block != -1) {
     is_block_end[parent_block] = is_block_end[cur_block];
   }
@@ -492,8 +496,11 @@ void StmtWithWhileAST::Dump() const {
 }
 
 std::pair<bool, int> StmtWithWhileAST::Output() const {
+  while_level++;
   while_cnt++;
   int cur_while = while_cnt;
+
+  level_to_cnt[while_level] = while_cnt;
 
   str += "  jump %while_";
   str += std::to_string(cur_while);
@@ -503,15 +510,25 @@ std::pair<bool, int> StmtWithWhileAST::Output() const {
   str += std::to_string(cur_while);
   str += "_entry:\n";
 
-  exp->Output();
+  auto result = exp->Output();
 
-  str += "  br %";
-  str += std::to_string(cnt-1);
-  str += ", %while_";
-  str += std::to_string(cur_while);
-  str += "_body, %while_";
-  str += std::to_string(cur_while);
-  str += "_end\n";
+  if (result.first) {
+    str += "  br ";
+    str += std::to_string(result.second);
+    str += ", %while_";
+    str += std::to_string(cur_while);
+    str += "_body, %while_";
+    str += std::to_string(cur_while);
+    str += "_end\n";
+  } else {
+    str += "  br %";
+    str += std::to_string(cnt - 1);
+    str += ", %while_";
+    str += std::to_string(cur_while);
+    str += "_body, %while_";
+    str += std::to_string(cur_while);
+    str += "_end\n";
+  }
 
   str += "%while_";
   str += std::to_string(cur_while);
@@ -531,7 +548,46 @@ std::pair<bool, int> StmtWithWhileAST::Output() const {
   str += "%while_";
   str += std::to_string(cur_while);
   str += "_end:\n";
-  
+
+  level_to_cnt.erase(while_level);
+  while_level--;
+
+  return std::make_pair(false, 0);
+}
+
+void StmtWithBreakAST::Dump() const {
+  std::cout << "StmtWithBreakAST";
+}
+
+std::pair<bool, int> StmtWithBreakAST::Output() const {
+  if (while_level < 0)
+    assert(false);
+
+  str += "  jump %while_";
+  str += std::to_string(level_to_cnt[while_level]);
+  str += "_end";
+  str += "\n";
+
+  is_block_end[cur_block] = true;
+
+  return std::make_pair(false, 0);
+}
+
+void StmtWithContinueAST::Dump() const {
+  std::cout << "StmtWithReturnAST";
+}
+
+std::pair<bool, int> StmtWithContinueAST::Output() const {
+  if (while_level < 0)
+    assert(false);
+
+  str += "  jump %while_";
+  str += std::to_string(level_to_cnt[while_level]);
+  str += "_entry";
+  str += "\n";
+
+  is_block_end[cur_block] = true;
+
   return std::make_pair(false, 0);
 }
 
