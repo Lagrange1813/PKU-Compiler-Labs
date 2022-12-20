@@ -78,7 +78,7 @@ void Visit(const koopa_raw_function_t& func) {
 // 访问基本块
 void Visit(const koopa_raw_basic_block_t& bb) {
   // 执行一些其他的必要操作
-  if (strcmp(bb->name + 1, "entry")) 
+  if (strcmp(bb->name + 1, "entry"))
     cout << bb->name + 1 << ":\n";
   // 访问所有指令
   Visit(bb->insts);
@@ -122,7 +122,7 @@ void Visit(const koopa_raw_value_t& value) {
       break;
     default:
       // 其他类型暂时遇不到
-      cout << kind.tag << "\n";
+      cout << "\t" << kind.tag << "\n";
       // assert(false);
       break;
   }
@@ -495,17 +495,18 @@ void Visit(const koopa_raw_jump_t& jump) {
 }
 
 void Visit(const koopa_raw_return_t& ret) {
-  if (ret.value->kind.tag == KOOPA_RVT_INTEGER) {
-    cout << "  li a0, ";
-    Visit(ret.value->kind.data.integer);
-    cout << "\n";
-  } else if (ret.value->kind.tag == KOOPA_RVT_BINARY || ret.value->kind.tag == KOOPA_RVT_LOAD) {
-    cout << "  lw a0, " << dic[ret.value] << "\n";
-  } else {
-    cout << "  ERROR: Undefined Tag: " << ret.value->kind.tag << "\n";
+  if (ret.value != nullptr) {
+    if (ret.value->kind.tag == KOOPA_RVT_INTEGER) {
+      cout << "  li a0, ";
+      Visit(ret.value->kind.data.integer);
+      cout << "\n";
+    } else if (ret.value->kind.tag == KOOPA_RVT_BINARY || ret.value->kind.tag == KOOPA_RVT_LOAD) {
+      cout << "  lw a0, " << dic[ret.value] << "\n";
+    } else {
+      cout << "  ERROR: Undefined Tag: " << ret.value->kind.tag << "\n";
+    }
   }
 
   cout << "  addi sp, sp, " << stack_space << "\n";
-  cout << "  ret"
-       << "\n";
+  cout << "  ret\n\n";
 }

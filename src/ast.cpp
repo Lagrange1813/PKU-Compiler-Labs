@@ -406,14 +406,14 @@ std::pair<bool, int> FuncFParamAST::Output() const {
 }
 
 void FuncFParamAST::declare() {
-  str += "\t%";
+  str += "\t@";
   str += ident;
   str += "_";
   str += std::to_string(cur_block);
   str += " = alloc i32\n";
   str += "\tstore @";
   str += ident;
-  str += ", %";
+  str += ", @";
   str += ident;
   str += "_";
   str += std::to_string(cur_block);
