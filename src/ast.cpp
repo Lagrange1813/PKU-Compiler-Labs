@@ -9,7 +9,7 @@ int while_level = -1;
 // while 计数器（标定不同while的基本块）
 int while_cnt = -1;
 // 当前块
-int cur_block = -1;
+int cur_block = 0;
 // 父子块关系记录
 std::unordered_map<int, int> parent;
 // 记录当前块是否终止
@@ -20,41 +20,76 @@ std::unordered_map<int, int> level_to_cnt;
 typedef enum {
   CONSTANT,
   VARIABLE,
+  FUNCTION,
   UNDEFINED,
 } value_type;
 
+typedef enum {
+  INT,
+  VOID,
+  UND,
+} func_type;
+
 typedef struct {
   value_type type;
-  int value;
-} stored_value;
+  union Value {
+    func_type type;
+    int val;
+  } value;
+} stored_object;
 
-std::vector<std::unordered_map<std::string, std::unique_ptr<stored_value>>*> symbol_tables;
+std::vector<std::unordered_map<std::string, std::unique_ptr<stored_object>>*> symbol_tables;
 
-void insertSymbol(const std::string& key, int value, bool isConst) {
-  if (isConst) {
-    stored_value* value_to_store = new stored_value();
-    value_to_store->value = value;
-    value_to_store->type = CONSTANT;
-    (*symbol_tables[cur_block])[key] = std::unique_ptr<stored_value>(value_to_store);
-  } else {
-    stored_value* value_to_store = new stored_value();
-    value_to_store->value = value;
-    value_to_store->type = VARIABLE;
-    (*symbol_tables[cur_block])[key] = std::unique_ptr<stored_value>(value_to_store);
+void insertSymbol(const std::string& key, value_type type, int value, func_type func_type) {
+  switch (type) {
+    case CONSTANT: {
+      stored_object* object_to_store = new stored_object();
+      object_to_store->type = CONSTANT;
+      object_to_store->value.val = value;
+      (*symbol_tables[cur_block])[key] = std::unique_ptr<stored_object>(object_to_store);
+      break;
+    }
+    case VARIABLE: {
+      stored_object* object_to_store = new stored_object();
+      object_to_store->type = VARIABLE;
+      object_to_store->value.val = value;
+      (*symbol_tables[cur_block])[key] = std::unique_ptr<stored_object>(object_to_store);
+      break;
+    }
+    case FUNCTION: {
+      stored_object* object_to_store = new stored_object();
+      object_to_store->type = FUNCTION;
+      object_to_store->value.type = func_type;
+      (*symbol_tables[cur_block])[key] = std::unique_ptr<stored_object>(object_to_store);
+      break;
+    }
+    default:
+      break;
   }
 }
 
-std::tuple<value_type, int, int> fetchSymbol(const std::string& key) {
+// Value type, Constant value, Varible level, Func type
+std::tuple<value_type, int, int, func_type> fetchSymbol(const std::string& key) {
   int cur = cur_block;
   while (cur >= 0) {
     if ((*symbol_tables[cur]).find(key) == (*symbol_tables[cur]).end()) {
       cur = parent[cur];
+      // cur--;
       continue;
     } else {
-      return std::make_tuple((*symbol_tables[cur])[key]->type, (*symbol_tables[cur])[key]->value, cur);
+      if ((*symbol_tables[cur])[key]->type == CONSTANT || (*symbol_tables[cur])[key]->type == VARIABLE) {
+        return std::make_tuple((*symbol_tables[cur])[key]->type, (*symbol_tables[cur])[key]->value.val, cur, UND);
+      }
+      else if ((*symbol_tables[cur])[key]->type == FUNCTION) {
+        return std::make_tuple((*symbol_tables[cur])[key]->type, 0, cur, (*symbol_tables[cur])[key]->value.type);
+      }
+      else
+        assert(false);
     }
   }
-  return std::make_tuple(UNDEFINED, -1, -1);
+  // Mark here
+  str += "\tUNDEFINED\n";
+  return std::make_tuple(UNDEFINED, -1, -1, UND);
 }
 
 int search(const ConstExpAST* constExp);
@@ -85,6 +120,9 @@ void CompUnitAST::Dump() const {
 }
 
 std::pair<bool, int> CompUnitAST::Output() const {
+  std::unordered_map<std::string, std::unique_ptr<stored_object>> table;
+  symbol_tables.push_back(&table);
+  parent[0] = -1;
   sub->Output();
   return std::pair<bool, int>(false, 0);
 }
@@ -159,7 +197,7 @@ void ConstDefAST::Dump() const {
 
 std::pair<bool, int> ConstDefAST::Output() const {
   std::pair<bool, int> result = constInitVal->Output();
-  insertSymbol(ident, result.second, true);
+  insertSymbol(ident, CONSTANT, result.second, UND);
   return std::pair<bool, int>(false, 0);
 }
 
@@ -203,7 +241,7 @@ std::pair<bool, int> VarDefAST::Output() const {
   str += std::to_string(cur_block);
   str += " = alloc i32\n";
 
-  insertSymbol(ident, 0, false);
+  insertSymbol(ident, VARIABLE, 0, UND);
   return std::pair<bool, int>(false, 0);
 }
 
@@ -240,7 +278,7 @@ std::pair<bool, int> VarDefWithAssignAST::Output() const {
     str += "\n";
   }
 
-  insertSymbol(ident, 0, false);
+  insertSymbol(ident, VARIABLE, 0, UND);
   return std::pair<bool, int>(false, 0);
 }
 
@@ -256,7 +294,7 @@ std::pair<bool, int> InitValAST::Output() const {
 
 void FuncDefAST::Dump() const {
   std::cout << "FuncDefAST { ";
-  func_type->Dump();
+  funcType->Dump();
   std::cout << "Ident { " << ident << " } ";
   if (params)
     (*params)->Dump();
@@ -265,16 +303,51 @@ void FuncDefAST::Dump() const {
 }
 
 std::pair<bool, int> FuncDefAST::Output() const {
+  // 向当前符号表中插入该函数定义
+  std::string type = ((FuncTypeAST*)funcType.get())->type;
+  func_type ty = UND;
+  if (type == "int")
+    ty = INT;
+  else if (type == "void")
+    ty = VOID;
+  insertSymbol(ident, FUNCTION, 0, ty);
+
+  // 清空计数器
+  cnt = 0;
+
+  // 为整个函数添加符号表，便于参数定义
+  std::unordered_map<std::string, std::unique_ptr<stored_object>> table;
+
+  int parent_block = cur_block;
+  cur_block = symbol_tables.size();
+  parent[cur_block] = parent_block;
+  symbol_tables.push_back(&table);
+
+  is_block_end.push_back(false);
+
   str += "fun ";
   str += "@";
   str += ident;
-  str += "(): ";
-  func_type->Output();
-  str += "{\n";
+  str += "(";
+  if (params)
+    (*params)->Output();
+  str += ")";
+  funcType->Output();
+  str += " {\n";
   str += "\%entry:\n";
-  block->Output();
-  str += "}";
 
+  // 函数参数及 Block 输出
+  if (params)
+    ((FuncFParamsAST*)(*params).get())->declare();
+  block->Output();
+
+  // 无返回值补 ret
+  if (((FuncTypeAST*)funcType.get())->type == "void" && !is_block_end[cur_block])
+    str += "\tret\n";
+
+  str += "}\n\n";
+
+  cur_block = parent[cur_block];
   return std::pair<bool, int>(false, 0);
 }
 
@@ -286,8 +359,7 @@ void FuncTypeAST::Dump() const {
 
 std::pair<bool, int> FuncTypeAST::Output() const {
   if (type == "int") {
-    str += "i32";
-    str += " ";
+    str += ": i32";
   }
 
   return std::pair<bool, int>(false, 0);
@@ -302,10 +374,18 @@ void FuncFParamsAST::Dump() const {
 }
 
 std::pair<bool, int> FuncFParamsAST::Output() const {
-  for (auto& param : paramList) {
-    param->Output();
+  for (int i = 0; i < paramList.size(); i++) {
+    paramList[i]->Output();
+    if (i != paramList.size() - 1)
+      str += ", ";
   }
   return std::pair<bool, int>(false, 0);
+}
+
+void FuncFParamsAST::declare() {
+  for (auto& param : paramList) {
+    ((FuncFParamAST*)param.get())->declare();
+  }
 }
 
 void FuncFParamAST::Dump() const {
@@ -316,7 +396,30 @@ void FuncFParamAST::Dump() const {
 }
 
 std::pair<bool, int> FuncFParamAST::Output() const {
+  str += "@";
+  str += ident;
+  if (((BTypeAST*)bType.get())->type == "int")
+    str += ": i32";
+  else
+    assert(false);
   return std::pair<bool, int>(false, 0);
+}
+
+void FuncFParamAST::declare() {
+  str += "\t%";
+  str += ident;
+  str += "_";
+  str += std::to_string(cur_block);
+  str += " = alloc i32\n";
+  str += "\tstore @";
+  str += ident;
+  str += ", %";
+  str += ident;
+  str += "_";
+  str += std::to_string(cur_block);
+  str += "\n";
+
+  insertSymbol(ident, VARIABLE, 0, UND);
 }
 
 void BlockAST::Dump() const {
@@ -328,7 +431,7 @@ void BlockAST::Dump() const {
 }
 
 std::pair<bool, int> BlockAST::Output() const {
-  std::unordered_map<std::string, std::unique_ptr<stored_value>> table;
+  std::unordered_map<std::string, std::unique_ptr<stored_object>> table;
 
   int parent_block = cur_block;
   cur_block = symbol_tables.size();
@@ -343,7 +446,7 @@ std::pair<bool, int> BlockAST::Output() const {
     blockItem->Output();
   }
 
-  if (parent_block != -1) {
+  if (parent_block != 0) {
     is_block_end[parent_block] = is_block_end[cur_block];
   }
   cur_block = parent[cur_block];
@@ -381,7 +484,7 @@ std::pair<bool, int> StmtWithAssignAST::Output() const {
   auto ident = ((LValAST*)lVal.get())->ident;
   auto fetch_result = fetchSymbol(ident);
 
-  if (std::get<0>(fetch_result) == UNDEFINED || std::get<0>(fetch_result) == CONSTANT) {
+  if (std::get<0>(fetch_result) != VARIABLE) {
     assert(false);
   }
 
@@ -683,7 +786,7 @@ void LValAST::Dump() const {
 }
 
 std::pair<bool, int> LValAST::Output() const {
-  std::tuple<value_type, int, int> result = fetchSymbol(ident);
+  auto result = fetchSymbol(ident);
   if (std::get<0>(result) == CONSTANT)
     return std::pair<bool, int>(true, std::get<1>(result));
   else if (std::get<0>(result) == VARIABLE) {
@@ -742,7 +845,7 @@ std::pair<bool, int> UnaryExpAST::Output() const {
 }
 
 void UnaryExpWithFuncAST::Dump() const {
-  std::cout << "UnaryExpAST { ";
+  std::cout << "UnaryExpWithFuncAST { ";
   std::cout << "Ident { " << ident << " } ";
   if (params)
     (*params)->Dump();
@@ -750,6 +853,50 @@ void UnaryExpWithFuncAST::Dump() const {
 }
 
 std::pair<bool, int> UnaryExpWithFuncAST::Output() const {
+  std::vector<std::pair<bool, int>> list;
+
+  if (params) {
+    list = ((FuncRParamsAST*)(*params).get())->prepare();
+  }
+
+  auto result = fetchSymbol(ident);
+
+  switch (std::get<3>(result)) {
+    case VOID: {
+      str += "\tcall @";
+      break;
+    }
+    case INT: {
+      str += "\t%";
+      str += std::to_string(cnt);
+      cnt++;
+      str += " = call @";
+      break;
+    }
+    default:
+      assert(false);
+      break;
+  }
+
+  str += ident;
+  str += "(";
+
+  // 准备参数
+  if (params) {
+    for (int i = 0; i < list.size(); i++) {
+      if (list[i].first) {
+        str += std::to_string(list[i].second);
+      } else {
+        str += "%";
+        str += std::to_string(list[i].second);
+      }
+      if (i != list.size() - 1)
+        str += ", ";
+    }
+  }
+
+  str += ")\n";
+
   return std::make_pair(false, 0);
 }
 
@@ -812,6 +959,20 @@ void FuncRParamsAST::Dump() const {
 
 std::pair<bool, int> FuncRParamsAST::Output() const {
   return std::make_pair(false, 0);
+}
+
+std::vector<std::pair<bool, int>> FuncRParamsAST::prepare() {
+  std::vector<std::pair<bool, int>> vec;
+  for (auto& param : paramList) {
+    auto result = param->Output();
+    int cur = cnt - 1;
+    if (result.first) {
+      vec.push_back(std::make_pair(true, result.second));
+    } else {
+      vec.push_back(std::make_pair(false, cur));
+    }
+  }
+  return vec;
 }
 
 void MulExpAST::Dump() const {

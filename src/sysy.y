@@ -113,7 +113,7 @@ ConstDecl
 
 BType
   : INT {
-    auto ast = new FuncTypeAST();
+    auto ast = new BTypeAST();
     string * type = new string("int");
     ast->type = *unique_ptr<string>(type);
     $$ = ast;
@@ -207,14 +207,14 @@ InitVal
 FuncDef
   : FuncType IDENT '(' ')' Block {
     auto ast = new FuncDefAST();
-    ast->func_type = unique_ptr<BaseAST>($1);
+    ast->funcType = unique_ptr<BaseAST>($1);
     ast->ident = *unique_ptr<string>($2);
     ast->block = unique_ptr<BaseAST>($5);
     $$ = ast;
   }
   | FuncType IDENT '(' FuncFParams ')' Block {
     auto ast = new FuncDefAST();
-    ast->func_type = unique_ptr<BaseAST>($1);
+    ast->funcType = unique_ptr<BaseAST>($1);
     ast->ident = *unique_ptr<string>($2);
     ast->params = make_optional(unique_ptr<BaseAST>($4));
     ast->block = unique_ptr<BaseAST>($6);
@@ -266,6 +266,7 @@ FuncFParam
     auto ast = new FuncFParamAST();
     ast->bType = unique_ptr<BaseAST>($1);
     ast->ident = *unique_ptr<string>($2);
+    $$ = ast;
   }
   ;
 

@@ -123,7 +123,7 @@ class InitValAST : public BaseAST {
 
 class FuncDefAST : public BaseAST {
  public:
-  std::unique_ptr<BaseAST> func_type;
+  std::unique_ptr<BaseAST> funcType;
   std::string ident;
   std::optional<std::unique_ptr<BaseAST>> params;
   std::unique_ptr<BaseAST> block;
@@ -146,6 +146,8 @@ class FuncFParamsAST : public BaseAST {
 
   void Dump() const override;
   std::pair<bool, int> Output() const override;
+
+  void declare();
 };
 
 class FuncFParamAST : public BaseAST {
@@ -155,6 +157,8 @@ class FuncFParamAST : public BaseAST {
 
   void Dump() const override;
   std::pair<bool, int> Output() const override;
+
+  void declare();
 };
 
 class BlockAST : public BaseAST {
@@ -317,6 +321,7 @@ class FuncRParamsAST : public BaseAST {
 
   void Dump() const override;
   std::pair<bool, int> Output() const override;
+  std::vector<std::pair<bool, int>> prepare();
 };
 
 class MulExpAST : public BaseAST {
