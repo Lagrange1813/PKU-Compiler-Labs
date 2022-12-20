@@ -19,5 +19,5 @@ void Visit(const koopa_raw_binary_t& binary, const koopa_raw_value_t& value);
 
 void Visit(const koopa_raw_branch_t& branch);
 void Visit(const koopa_raw_jump_t& jump);
-
+void Visit(const koopa_raw_call_t& call);
 void Visit(const koopa_raw_return_t& ret);

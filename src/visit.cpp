@@ -6,7 +6,9 @@
 using namespace std;
 
 unordered_map<koopa_raw_value_t, string> dic;
+// 记录函数所用栈空间
 int stack_space = 0;
+// 栈局部变量计数器
 int stack_cnt = 0;
 
 // Just use for single instructions.
@@ -49,27 +51,43 @@ void Visit(const koopa_raw_slice_t& slice) {
 
 // 访问函数
 void Visit(const koopa_raw_function_t& func) {
+  // 清零函数相关变量
+  stack_cnt = 0;
+
   // 执行一些其他的必要操作
   cout << "  .text\n";
   cout << "  .globl " << func->name + 1 << "\n";
   cout << func->name + 1 << ":\n";
 
-  int total = 0;
+  // 记录函数内部局部变量数量
+  int var_cnt = 0;
+  // 记录函数内有无调用
+  int has_call = 0;
 
   for (int i = 0; i < func->bbs.len; i++) {
     const koopa_raw_slice_t& insts = reinterpret_cast<koopa_raw_basic_block_t>(func->bbs.buffer[i])->insts;
     int cnt = insts.len;
     for (size_t i = 0; i < insts.len; ++i) {
       auto inst = reinterpret_cast<koopa_raw_value_t>(insts.buffer[i]);
+      // 无返回值语句
       if (inst->ty->tag == KOOPA_RTT_UNIT) {
         cnt--;
       }
+      // 记录函数内有无调用
+      if (inst->kind.tag == KOOPA_RVT_CALL) {
+        has_call = 1;
+      }
     }
-    total += cnt;
+    var_cnt += cnt;
   }
 
-  stack_space = total * 4;
-  cout << "  addi sp, sp, " << -(total * 4) << "\n";
+  // 更新栈所需空间
+  stack_space = (var_cnt + has_call) * 4;
+  if (stack_space != 0)
+    cout << "\taddi sp, sp, " << -stack_space << "\n";
+
+  if (has_call)
+    cout << "\tsw ra, " << stack_space - 4 << "(sp)"
 
   // 访问所有基本块
   Visit(func->bbs);
@@ -94,7 +112,6 @@ void Visit(const koopa_raw_value_t& value) {
       Visit(kind.data.integer);
       break;
     case KOOPA_RVT_ALLOC:
-
       break;
     case KOOPA_RVT_LOAD:
       // 访问 load 指令
@@ -109,12 +126,16 @@ void Visit(const koopa_raw_value_t& value) {
       Visit(kind.data.binary, value);
       break;
     case KOOPA_RVT_BRANCH:
-      // 访问 return 指令
+      // 访问 branch 指令
       Visit(kind.data.branch);
       break;
     case KOOPA_RVT_JUMP:
-      // 访问 return 指令
+      // 访问 jump 指令
       Visit(kind.data.jump);
+      break;
+    case KOOPA_RVT_CALL:
+      // 访问 call 指令
+      Visit(kind.data.call);
       break;
     case KOOPA_RVT_RETURN:
       // 访问 return 指令
@@ -144,6 +165,8 @@ void Search(const koopa_raw_value_t value) {
     cout << "  lw t" << reg_cnt << ", " << dic[value] << "\n";
     dic[value] = "t" + to_string(reg_cnt);
     reg_cnt++;
+  } else if (value->kind.tag == KOOPA_RVT_FUNC_ARG_REF) {
+    dic[value] = "a" + to_string(value->kind.data.func_arg_ref.index);
   }
 }
 
@@ -494,6 +517,10 @@ void Visit(const koopa_raw_jump_t& jump) {
   cout << "  j " << jump.target->name + 1 << "\n";
 }
 
+void Visit(const koopa_raw_call_t& call) {
+  // Search(call.args.)
+}
+
 void Visit(const koopa_raw_return_t& ret) {
   if (ret.value != nullptr) {
     if (ret.value->kind.tag == KOOPA_RVT_INTEGER) {
@@ -507,6 +534,7 @@ void Visit(const koopa_raw_return_t& ret) {
     }
   }
 
-  cout << "  addi sp, sp, " << stack_space << "\n";
+  if (stack_space != 0)
+    cout << "  addi sp, sp, " << stack_space << "\n";
   cout << "  ret\n\n";
 }
