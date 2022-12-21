@@ -10,6 +10,8 @@ unordered_map<koopa_raw_value_t, string> dic;
 int stack_space = 0;
 // 栈局部变量计数器
 int stack_cnt = 0;
+// 记录函数内有无调用
+int has_call = 0;
 
 // Just use for single instructions.
 int reg_cnt = 0;
@@ -53,6 +55,7 @@ void Visit(const koopa_raw_slice_t& slice) {
 void Visit(const koopa_raw_function_t& func) {
   // 清零函数相关变量
   stack_cnt = 0;
+  has_call = 0;
 
   // 执行一些其他的必要操作
   cout << "  .text\n";
@@ -61,8 +64,6 @@ void Visit(const koopa_raw_function_t& func) {
 
   // 记录函数内部局部变量数量
   int var_cnt = 0;
-  // 记录函数内有无调用
-  int has_call = 0;
 
   for (int i = 0; i < func->bbs.len; i++) {
     const koopa_raw_slice_t& insts = reinterpret_cast<koopa_raw_basic_block_t>(func->bbs.buffer[i])->insts;
@@ -87,7 +88,7 @@ void Visit(const koopa_raw_function_t& func) {
     cout << "\taddi sp, sp, " << -stack_space << "\n";
 
   if (has_call)
-    cout << "\tsw ra, " << stack_space - 4 << "(sp)"
+    cout << "\tsw ra, " << stack_space - 4 << "(sp)\n";
 
   // 访问所有基本块
   Visit(func->bbs);
@@ -135,7 +136,7 @@ void Visit(const koopa_raw_value_t& value) {
       break;
     case KOOPA_RVT_CALL:
       // 访问 call 指令
-      Visit(kind.data.call);
+      Visit(kind.data.call, value);
       break;
     case KOOPA_RVT_RETURN:
       // 访问 return 指令
@@ -161,7 +162,7 @@ void Search(const koopa_raw_value_t value) {
     reg_cnt++;
   } else if (value->kind.tag == KOOPA_RVT_INTEGER && value->kind.data.integer.value == 0) {
     dic[value] = "x0";
-  } else if (value->kind.tag == KOOPA_RVT_ALLOC || value->kind.tag == KOOPA_RVT_LOAD || value->kind.tag == KOOPA_RVT_BINARY) {
+  } else if (value->kind.tag == KOOPA_RVT_ALLOC || value->kind.tag == KOOPA_RVT_LOAD || value->kind.tag == KOOPA_RVT_BINARY || value->kind.tag == KOOPA_RVT_CALL) {
     cout << "  lw t" << reg_cnt << ", " << dic[value] << "\n";
     dic[value] = "t" + to_string(reg_cnt);
     reg_cnt++;
@@ -517,8 +518,22 @@ void Visit(const koopa_raw_jump_t& jump) {
   cout << "  j " << jump.target->name + 1 << "\n";
 }
 
-void Visit(const koopa_raw_call_t& call) {
-  // Search(call.args.)
+void Visit(const koopa_raw_call_t& call, const koopa_raw_value_t& value) {
+  for (int i = 0; i < call.args.len; i++) {
+    if (reinterpret_cast<koopa_raw_value_t>(call.args.buffer[i])->kind.tag == KOOPA_RVT_INTEGER)
+      cout << "\tli a" << i << ", " << reinterpret_cast<koopa_raw_value_t>(call.args.buffer[i])->kind.data.integer.value << "\n";
+    else
+      cout << "\tmv a" << i << ", " << dic[reinterpret_cast<koopa_raw_value_t>(call.args.buffer[i])] << "\n";
+  }
+
+  cout << "\tcall " << call.callee->name + 1 << "\n";
+
+  // 根据ir是否保存返回值决定是否保存a0
+  if (value->ty->tag != KOOPA_RTT_UNIT) {
+    cout << "\tsw a0, " << stack_cnt << "(sp)\n";
+    dic[value] = std::to_string(stack_cnt) + "(sp)";
+    stack_cnt++;
+  }
 }
 
 void Visit(const koopa_raw_return_t& ret) {
@@ -527,14 +542,17 @@ void Visit(const koopa_raw_return_t& ret) {
       cout << "  li a0, ";
       Visit(ret.value->kind.data.integer);
       cout << "\n";
-    } else if (ret.value->kind.tag == KOOPA_RVT_BINARY || ret.value->kind.tag == KOOPA_RVT_LOAD) {
+    } else if (ret.value->kind.tag == KOOPA_RVT_BINARY || ret.value->kind.tag == KOOPA_RVT_LOAD || ret.value->kind.tag == KOOPA_RVT_CALL) {
       cout << "  lw a0, " << dic[ret.value] << "\n";
     } else {
       cout << "  ERROR: Undefined Tag: " << ret.value->kind.tag << "\n";
     }
   }
 
+  if (has_call)
+    cout << "\tlw ra, " << stack_space - 4 << "(sp)\n";
+
   if (stack_space != 0)
-    cout << "  addi sp, sp, " << stack_space << "\n";
-  cout << "  ret\n\n";
+    cout << "\taddi sp, sp, " << stack_space << "\n";
+  cout << "\tret\n\n";
 }
