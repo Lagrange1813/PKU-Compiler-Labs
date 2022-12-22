@@ -123,6 +123,25 @@ std::pair<bool, int> CompUnitAST::Output() const {
   std::unordered_map<std::string, std::unique_ptr<stored_object>> table;
   symbol_tables.push_back(&table);
   parent[0] = -1;
+
+  str += "decl @getint(): i32\n";
+  str += "decl @getch(): i32\n";
+  str += "decl @getarray(*i32): i32\n";
+  str += "decl @putint(i32)\n";
+  str += "decl @putch(i32)\n";
+  str += "decl @putarray(i32, *i32)\n";
+  str += "decl @starttime()\n";
+  str += "decl @stoptime()\n\n";
+
+  insertSymbol("getint", FUNCTION, 0, INT);
+  insertSymbol("getch", FUNCTION, 0, INT);
+  insertSymbol("getarray", FUNCTION, 0, INT);
+  insertSymbol("putint", FUNCTION, 0, VOID);
+  insertSymbol("putch", FUNCTION, 0, VOID);
+  insertSymbol("putarray", FUNCTION, 0, VOID);
+  insertSymbol("starttime", FUNCTION, 0, VOID);
+  insertSymbol("stoptime", FUNCTION, 0, VOID);
+
   sub->Output();
   return std::pair<bool, int>(false, 0);
 }

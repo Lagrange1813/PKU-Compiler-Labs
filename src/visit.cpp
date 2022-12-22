@@ -53,6 +53,8 @@ void Visit(const koopa_raw_slice_t& slice) {
 
 // 访问函数
 void Visit(const koopa_raw_function_t& func) {
+  if (func->bbs.len == 0) return;
+
   // 清零函数相关变量
   stack_cnt = 0;
   has_call = 0;
