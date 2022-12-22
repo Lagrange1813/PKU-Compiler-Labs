@@ -64,6 +64,7 @@ void Visit(const koopa_raw_function_t& func) {
 
   // 记录函数内部局部变量数量
   int var_cnt = 0;
+  int call_cnt = 0;
 
   for (int i = 0; i < func->bbs.len; i++) {
     const koopa_raw_slice_t& insts = reinterpret_cast<koopa_raw_basic_block_t>(func->bbs.buffer[i])->insts;
@@ -77,13 +78,15 @@ void Visit(const koopa_raw_function_t& func) {
       // 记录函数内有无调用
       if (inst->kind.tag == KOOPA_RVT_CALL) {
         has_call = 1;
+        int cur = max(int(inst->kind.data.call.args.len) - 8, 0);
+        call_cnt = max(call_cnt, cur);
       }
     }
     var_cnt += cnt;
   }
 
   // 更新栈所需空间
-  stack_space = (var_cnt + has_call) * 4;
+  stack_space = (var_cnt + has_call + call_cnt) * 4;
   if (stack_space != 0)
     cout << "\taddi sp, sp, " << -stack_space << "\n";
 
@@ -519,11 +522,25 @@ void Visit(const koopa_raw_jump_t& jump) {
 }
 
 void Visit(const koopa_raw_call_t& call, const koopa_raw_value_t& value) {
-  for (int i = 0; i < call.args.len; i++) {
+  for (int i = 0; i < min(int(call.args.len), 8); i++) {
     if (reinterpret_cast<koopa_raw_value_t>(call.args.buffer[i])->kind.tag == KOOPA_RVT_INTEGER)
       cout << "\tli a" << i << ", " << reinterpret_cast<koopa_raw_value_t>(call.args.buffer[i])->kind.data.integer.value << "\n";
     else
       cout << "\tmv a" << i << ", " << dic[reinterpret_cast<koopa_raw_value_t>(call.args.buffer[i])] << "\n";
+  }
+
+  for (int i = 8; i < call.args.len; i++) {
+    if (reinterpret_cast<koopa_raw_value_t>(call.args.buffer[i])->kind.tag == KOOPA_RVT_INTEGER) {
+      cout << "\tli t0"
+           << ", " << reinterpret_cast<koopa_raw_value_t>(call.args.buffer[i])->kind.data.integer.value << "\n";
+      cout << "\tsw t0"
+           << ", " << (i - 8) * 4 << "(sp)\n";
+    } else {
+      cout << "\tmv t0"
+           << ", " << dic[reinterpret_cast<koopa_raw_value_t>(call.args.buffer[i])] << "\n";
+      cout << "\tsw t0"
+           << ", " << (i - 8) * 4 << "(sp)\n";
+    }
   }
 
   cout << "\tcall " << call.callee->name + 1 << "\n";
