@@ -88,6 +88,8 @@ void Visit(const koopa_raw_function_t& func) {
     var_cnt += cnt;
   }
 
+  stack_cnt = call_cnt;
+
   // 更新栈所需空间
   stack_space = (var_cnt + has_call + call_cnt) * 4;
   if (stack_space != 0)
@@ -176,7 +178,13 @@ void Search(const koopa_raw_value_t value) {
     dic[value] = "t" + to_string(reg_cnt);
     reg_cnt++;
   } else if (value->kind.tag == KOOPA_RVT_FUNC_ARG_REF) {
-    dic[value] = "a" + to_string(value->kind.data.func_arg_ref.index);
+    size_t index = value->kind.data.func_arg_ref.index;
+    if (index < 8) {
+      dic[value] = "a" + to_string(index);
+    } else {
+      cout << "\tlw t0, " << stack_space + (index - 8) * 4 << "(sp)\n";
+      dic[value] = "t0";
+    }
   }
 }
 
@@ -222,7 +230,14 @@ void Visit(const koopa_raw_store_t& store) {
     dic[store.dest] = to_string(stack_cnt * 4) + "(sp)";
     stack_cnt++;
   }
-  cout << "  sw " << dic[store.value] << ", " << dic[store.dest] << "\n";
+
+  if (store.dest->kind.tag == KOOPA_RVT_GLOBAL_ALLOC) {
+    cout << "\tla t" << reg_cnt << ", " << dic[store.dest] << "\n";
+    reg_cnt++;
+    cout << "\tsw " << dic[store.value] << ", " << "0(t" << reg_cnt-1 << ")\n";
+  } else {
+    cout << "  sw " << dic[store.value] << ", " << dic[store.dest] << "\n";
+  }
 }
 
 void Visit(const koopa_raw_integer_t& integer) {
@@ -558,8 +573,10 @@ void Visit(const koopa_raw_call_t& call, const koopa_raw_value_t& value) {
   for (int i = 0; i < min(int(call.args.len), 8); i++) {
     if (reinterpret_cast<koopa_raw_value_t>(call.args.buffer[i])->kind.tag == KOOPA_RVT_INTEGER)
       cout << "\tli a" << i << ", " << reinterpret_cast<koopa_raw_value_t>(call.args.buffer[i])->kind.data.integer.value << "\n";
-    else
-      cout << "\tmv a" << i << ", " << dic[reinterpret_cast<koopa_raw_value_t>(call.args.buffer[i])] << "\n";
+    else {
+      cout << "\tlw t0, " << dic[reinterpret_cast<koopa_raw_value_t>(call.args.buffer[i])] << "\n";
+      cout << "\tmv a" << i << ", t0\n";
+    }
   }
 
   for (int i = 8; i < call.args.len; i++) {
@@ -580,8 +597,8 @@ void Visit(const koopa_raw_call_t& call, const koopa_raw_value_t& value) {
 
   // 根据ir是否保存返回值决定是否保存a0
   if (value->ty->tag != KOOPA_RTT_UNIT) {
-    cout << "\tsw a0, " << stack_cnt << "(sp)\n";
-    dic[value] = std::to_string(stack_cnt) + "(sp)";
+    cout << "\tsw a0, " << stack_cnt * 4 << "(sp)\n";
+    dic[value] = std::to_string(stack_cnt*4) + "(sp)";
     stack_cnt++;
   }
 }
