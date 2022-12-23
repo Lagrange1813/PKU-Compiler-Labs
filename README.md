@@ -90,7 +90,6 @@ then:
 	lw ra, 40(sp)
 	addi sp, sp, 44
 	ret
-
 else:
 	lw t0, 0(sp)
 	sw t0, 12(sp)
@@ -145,4 +144,341 @@ main:
 	lw ra, 16(sp)
 	addi sp, sp, 20
 	ret
+```
+
+AST 树
+
+```cpp
+CompUnitAST {
+  CompUnitSubWithFuncAST {
+    CompUnitSubWithFuncAST {
+      FuncDefAST {
+        FuncTypeAST{int} Ident{ fib } FuncFParamsAST {
+          FuncFParamAST {
+            BTypeAST{int} Ident {
+              n
+            }
+          }
+        }
+        BlockAST {
+          BlockItemWithStmtAST {
+            StmtWithIfAST {
+              ExpAST {
+                LOrExpAST {
+                  LAndExpAST {
+                    EqExpAST {
+                      RelExpWithOpAST {
+                        RelExpAST {
+                          AddExpAST {
+                            MulExpAST {
+                              UnaryExpAST {
+                                PrimaryExpWithLValAST {
+                                  LValAST {
+                                    n
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                        RelExpOpAST{ <= } AddExpAST {
+                          MulExpAST {
+                            UnaryExpAST {
+                              PrimaryExpWithNumAST {
+                                2
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              StmtWithBlockAST {
+                BlockAST {
+                  BlockItemWithStmtAST {
+                    StmtWithReturnAST {
+                      ExpAST {
+                        LOrExpAST {
+                          LAndExpAST {
+                            EqExpAST {
+                              RelExpAST {
+                                AddExpAST {
+                                  MulExpAST {
+                                    UnaryExpAST {
+                                      PrimaryExpWithNumAST {
+                                        1
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              StmtWithBlockAST {
+                BlockAST {
+                  BlockItemWithStmtAST {
+                    StmtWithReturnAST {
+                      ExpAST {
+                        LOrExpAST {
+                          LAndExpAST {
+                            EqExpAST {
+                              RelExpAST {
+                                AddExpWithOpAST {
+                                  AddExpAST {
+                                    MulExpAST {
+                                      UnaryExpWithFuncAST {
+                                        Ident{ fib } FuncRParamsAST {
+                                          ExpAST {
+                                            LOrExpAST {
+                                              LAndExpAST {
+                                                EqExpAST {
+                                                  RelExpAST {
+                                                    AddExpWithOpAST {
+                                                      AddExpAST {
+                                                        MulExpAST {
+                                                          UnaryExpAST {
+                                                            PrimaryExpWithLValAST {
+                                                              LValAST {
+                                                                n
+                                                              }
+                                                            }
+                                                          }
+                                                        }
+                                                      }
+                                                      AddExpOpAST{ - } MulExpAST {
+                                                        UnaryExpAST {
+                                                          PrimaryExpWithNumAST {
+                                                            1
+                                                          }
+                                                        }
+                                                      }
+                                                    }
+                                                  }
+                                                }
+                                              }
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                  AddExpOpAST{ + } MulExpAST {
+                                    UnaryExpWithFuncAST {
+                                      Ident{ fib } FuncRParamsAST {
+                                        ExpAST {
+                                          LOrExpAST {
+                                            LAndExpAST {
+                                              EqExpAST {
+                                                RelExpAST {
+                                                  AddExpWithOpAST {
+                                                    AddExpAST {
+                                                      MulExpAST {
+                                                        UnaryExpAST {
+                                                          PrimaryExpWithLValAST {
+                                                            LValAST {
+                                                              n
+                                                            }
+                                                          }
+                                                        }
+                                                      }
+                                                    }
+                                                    AddExpOpAST{ - } MulExpAST {
+                                                      UnaryExpAST {
+                                                        PrimaryExpWithNumAST {
+                                                          2
+                                                        }
+                                                      }
+                                                    }
+                                                  }
+                                                }
+                                              }
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    FuncDefAST {
+      FuncTypeAST{ int } Ident{ main } BlockAST {
+        BlockItemWithDeclAST {
+          DeclWithVarAST {
+            VarDeclAST {
+              BTypeAST{ int } VarDefWithAssignAST {
+                Ident{ input } InitValAST {
+                  ExpAST {
+                    LOrExpAST {
+                      LAndExpAST {
+                        EqExpAST {
+                          RelExpAST {
+                            AddExpAST {
+                              MulExpAST {
+                                UnaryExpWithFuncAST {
+                                  Ident {
+                                    getint
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        BlockItemWithStmtAST {
+          StmtWithExpAST {
+            ExpAST {
+              LOrExpAST {
+                LAndExpAST {
+                  EqExpAST {
+                    RelExpAST {
+                      AddExpAST {
+                        MulExpAST {
+                          UnaryExpWithFuncAST {
+                            Ident{ putint } FuncRParamsAST {
+                              ExpAST {
+                                LOrExpAST {
+                                  LAndExpAST {
+                                    EqExpAST {
+                                      RelExpAST {
+                                        AddExpAST {
+                                          MulExpAST {
+                                            UnaryExpWithFuncAST {
+                                              Ident{ fib } FuncRParamsAST {
+                                                ExpAST {
+                                                  LOrExpAST {
+                                                    LAndExpAST {
+                                                      EqExpAST {
+                                                        RelExpAST {
+                                                          AddExpAST {
+                                                            MulExpAST {
+                                                              UnaryExpAST {
+                                                                PrimaryExpWithLValAST {
+                                                                  LValAST {
+                                                                    input
+                                                                  }
+                                                                }
+                                                              }
+                                                            }
+                                                          }
+                                                        }
+                                                      }
+                                                    }
+                                                  }
+                                                }
+                                              }
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        BlockItemWithStmtAST {
+          StmtWithExpAST {
+            ExpAST {
+              LOrExpAST {
+                LAndExpAST {
+                  EqExpAST {
+                    RelExpAST {
+                      AddExpAST {
+                        MulExpAST {
+                          UnaryExpWithFuncAST {
+                            Ident{ putch } FuncRParamsAST {
+                              ExpAST {
+                                LOrExpAST {
+                                  LAndExpAST {
+                                    EqExpAST {
+                                      RelExpAST {
+                                        AddExpAST {
+                                          MulExpAST {
+                                            UnaryExpAST {
+                                              PrimaryExpWithNumAST {
+                                                10
+                                              }
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        BlockItemWithStmtAST {
+          StmtWithReturnAST {
+            ExpAST {
+              LOrExpAST {
+                LAndExpAST {
+                  EqExpAST {
+                    RelExpAST {
+                      AddExpAST {
+                        MulExpAST {
+                          UnaryExpAST {
+                            PrimaryExpWithNumAST {
+                              0
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
 ```
