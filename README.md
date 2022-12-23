@@ -148,14 +148,14 @@ main:
 
 AST 树
 
-```cpp
+```
 CompUnitAST {
   CompUnitSubWithFuncAST {
     CompUnitSubWithFuncAST {
       FuncDefAST {
-        FuncTypeAST{int} Ident{ fib } FuncFParamsAST {
+        FuncTypeAST{ int } Ident{ fib } FuncFParamsAST {
           FuncFParamAST {
-            BTypeAST{int} Ident {
+            BTypeAST{ int } Ident {
               n
             }
           }
