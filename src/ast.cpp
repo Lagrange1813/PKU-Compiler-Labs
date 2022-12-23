@@ -318,7 +318,7 @@ std::pair<bool, int> VarDefWithAssignAST::Output() const {
     }
   } else {
     if (result.first) {
-      str += "  store ";
+      str += "\tstore ";
       str += std::to_string(result.second);
       str += ", @";
       str += ident;
@@ -326,7 +326,7 @@ std::pair<bool, int> VarDefWithAssignAST::Output() const {
       str += std::to_string(cur_block);
       str += "\n";
     } else {
-      str += "  store %";
+      str += "\tstore %";
       str += std::to_string(cnt - 1);
       str += ", @";
       str += ident;
@@ -535,7 +535,7 @@ std::pair<bool, int> StmtWithAssignAST::Output() const {
   std::pair<bool, int> result = exp->Output();
 
   if (result.first) {
-    str += "  store ";
+    str += "\tstore ";
     str += std::to_string(result.second);
     str += ", @";
     str += ident;
@@ -543,7 +543,7 @@ std::pair<bool, int> StmtWithAssignAST::Output() const {
     str += std::to_string(std::get<2>(fetch_result));
     str += "\n";
   } else {
-    str += "  store %";
+    str += "\tstore %";
     str += std::to_string(cnt - 1);
     str += ", @";
     str += ident;
@@ -595,7 +595,7 @@ std::pair<bool, int> StmtWithIfAST::Output() const {
   int cur_if = if_cnt;
 
   if (result.first) {
-    str += "  br ";
+    str += "\tbr ";
     str += std::to_string(result.second);
     str += ", %then";
     if (cur_if != 0) {
@@ -609,7 +609,7 @@ std::pair<bool, int> StmtWithIfAST::Output() const {
     }
     str += "\n";
   } else {
-    str += "  br %";
+    str += "\tbr %";
     str += std::to_string(cnt - 1);
     str += ", %then";
     if (cur_if != 0) {
@@ -634,7 +634,7 @@ std::pair<bool, int> StmtWithIfAST::Output() const {
   if_stmt->Output();
 
   if (!is_block_end[cur_block]) {
-    str += "  jump %end";
+    str += "\tjump %end";
     if (cur_if != 0) {
       str += "_";
       str += std::to_string(cur_if);
@@ -659,7 +659,7 @@ std::pair<bool, int> StmtWithIfAST::Output() const {
     (*else_stmt)->Output();
 
     if (!is_block_end[cur_block]) {
-      str += "  jump %end";
+      str += "\tjump %end";
       if (cur_if != 0) {
         str += "_";
         str += std::to_string(cur_if);
@@ -700,7 +700,7 @@ std::pair<bool, int> StmtWithWhileAST::Output() const {
 
   level_to_cnt[while_level] = while_cnt;
 
-  str += "  jump %while_";
+  str += "\tjump %while_";
   str += std::to_string(cur_while);
   str += "_entry\n";
 
@@ -711,7 +711,7 @@ std::pair<bool, int> StmtWithWhileAST::Output() const {
   auto result = exp->Output();
 
   if (result.first) {
-    str += "  br ";
+    str += "\tbr ";
     str += std::to_string(result.second);
     str += ", %while_";
     str += std::to_string(cur_while);
@@ -719,7 +719,7 @@ std::pair<bool, int> StmtWithWhileAST::Output() const {
     str += std::to_string(cur_while);
     str += "_end\n";
   } else {
-    str += "  br %";
+    str += "\tbr %";
     str += std::to_string(cnt - 1);
     str += ", %while_";
     str += std::to_string(cur_while);
@@ -735,7 +735,7 @@ std::pair<bool, int> StmtWithWhileAST::Output() const {
   stmt->Output();
 
   if (!is_block_end[cur_block]) {
-    str += "  jump %while_";
+    str += "\tjump %while_";
     str += std::to_string(cur_while);
     str += "_entry";
     str += "\n";
@@ -761,7 +761,7 @@ std::pair<bool, int> StmtWithBreakAST::Output() const {
   if (while_level < 0)
     assert(false);
 
-  str += "  jump %while_";
+  str += "\tjump %while_";
   str += std::to_string(level_to_cnt[while_level]);
   str += "_end";
   str += "\n";
@@ -779,7 +779,7 @@ std::pair<bool, int> StmtWithContinueAST::Output() const {
   if (while_level < 0)
     assert(false);
 
-  str += "  jump %while_";
+  str += "\tjump %while_";
   str += std::to_string(level_to_cnt[while_level]);
   str += "_entry";
   str += "\n";
@@ -801,11 +801,11 @@ std::pair<bool, int> StmtWithReturnAST::Output() const {
     std::pair<bool, int> result = (*exp)->Output();
 
     if (result.first) {
-      str += "  ret ";
+      str += "\tret ";
       str += std::to_string(result.second);
       str += "\n";
     } else {
-      str += "  ret %";
+      str += "\tret %";
       str += std::to_string(cnt - 1);
       str += "\n";
     }
@@ -839,7 +839,7 @@ std::pair<bool, int> LValAST::Output() const {
   if (std::get<0>(result) == CONSTANT)
     return std::pair<bool, int>(true, std::get<1>(result));
   else if (std::get<0>(result) == VARIABLE) {
-    str += "  %";
+    str += "\t%";
     str += std::to_string(cnt);
     cnt++;
     str += " = load @";
@@ -961,14 +961,14 @@ std::pair<bool, int> UnaryExpWithOpAST::Output() const {
 
   if (result.first) {
     if (unaryOp == '!') {
-      str += "  %";
+      str += "\t%";
       str += std::to_string(cnt);
       str += " = eq ";
       str += std::to_string(result.second);
       str += ", 0\n";
       cnt++;
     } else if (unaryOp == '-') {
-      str += "  %";
+      str += "\t%";
       str += std::to_string(cnt);
       str += " = sub 0, ";
       str += std::to_string(result.second);
@@ -979,14 +979,14 @@ std::pair<bool, int> UnaryExpWithOpAST::Output() const {
     }
   } else {
     if (unaryOp == '!') {
-      str += "  %";
+      str += "\t%";
       str += std::to_string(cnt);
       str += " = eq %";
       str += std::to_string(cnt - 1);
       str += ", 0\n";
       cnt++;
     } else if (unaryOp == '-') {
-      str += "  %";
+      str += "\t%";
       str += std::to_string(cnt);
       str += " = sub 0, %";
       str += std::to_string(cnt - 1);
@@ -1056,7 +1056,7 @@ std::pair<bool, int> MulExpWithOpAST::Output() const {
   };
 
   if (result_l.first && result_r.first) {
-    str += "  %";
+    str += "\t%";
     str += std::to_string(cnt);
     str += " = ";
     str += dic[mulOp];
@@ -1068,7 +1068,7 @@ std::pair<bool, int> MulExpWithOpAST::Output() const {
     cnt++;
 
   } else if (result_l.first) {
-    str += "  %";
+    str += "\t%";
     str += std::to_string(cnt);
     str += " = ";
     str += dic[mulOp];
@@ -1080,7 +1080,7 @@ std::pair<bool, int> MulExpWithOpAST::Output() const {
     cnt++;
 
   } else if (result_r.first) {
-    str += "  %";
+    str += "\t%";
     str += std::to_string(cnt);
     str += " = ";
     str += dic[mulOp];
@@ -1092,7 +1092,7 @@ std::pair<bool, int> MulExpWithOpAST::Output() const {
     cnt++;
 
   } else {
-    str += "  %";
+    str += "\t%";
     str += std::to_string(cnt);
     str += " = ";
     str += dic[mulOp];
@@ -1138,7 +1138,7 @@ std::pair<bool, int> AddExpWithOpAST::Output() const {
   };
 
   if (result_l.first && result_r.first) {
-    str += "  %";
+    str += "\t%";
     str += std::to_string(cnt);
     str += " = ";
     str += dic[addOp];
@@ -1150,7 +1150,7 @@ std::pair<bool, int> AddExpWithOpAST::Output() const {
     cnt++;
 
   } else if (result_l.first) {
-    str += "  %";
+    str += "\t%";
     str += std::to_string(cnt);
     str += " = ";
     str += dic[addOp];
@@ -1162,7 +1162,7 @@ std::pair<bool, int> AddExpWithOpAST::Output() const {
     cnt++;
 
   } else if (result_r.first) {
-    str += "  %";
+    str += "\t%";
     str += std::to_string(cnt);
     str += " = ";
     str += dic[addOp];
@@ -1174,7 +1174,7 @@ std::pair<bool, int> AddExpWithOpAST::Output() const {
     cnt++;
 
   } else {
-    str += "  %";
+    str += "\t%";
     str += std::to_string(cnt);
     str += " = ";
     str += dic[addOp];
@@ -1222,7 +1222,7 @@ std::pair<bool, int> RelExpWithOpAST::Output() const {
   };
 
   if (result_l.first && result_r.first) {
-    str += "  %";
+    str += "\t%";
     str += std::to_string(cnt);
     str += " = ";
     str += dic[relOp];
@@ -1234,7 +1234,7 @@ std::pair<bool, int> RelExpWithOpAST::Output() const {
     cnt++;
 
   } else if (result_l.first) {
-    str += "  %";
+    str += "\t%";
     str += std::to_string(cnt);
     str += " = ";
     str += dic[relOp];
@@ -1246,7 +1246,7 @@ std::pair<bool, int> RelExpWithOpAST::Output() const {
     cnt++;
 
   } else if (result_r.first) {
-    str += "  %";
+    str += "\t%";
     str += std::to_string(cnt);
     str += " = ";
     str += dic[relOp];
@@ -1258,7 +1258,7 @@ std::pair<bool, int> RelExpWithOpAST::Output() const {
     cnt++;
 
   } else {
-    str += "  %";
+    str += "\t%";
     str += std::to_string(cnt);
     str += " = ";
     str += dic[relOp];
@@ -1304,7 +1304,7 @@ std::pair<bool, int> EqExpWithOpAST::Output() const {
   };
 
   if (result_l.first && result_r.first) {
-    str += "  %";
+    str += "\t%";
     str += std::to_string(cnt);
     str += " = ";
     str += dic[eqOp];
@@ -1316,7 +1316,7 @@ std::pair<bool, int> EqExpWithOpAST::Output() const {
     cnt++;
 
   } else if (result_l.first) {
-    str += "  %";
+    str += "\t%";
     str += std::to_string(cnt);
     str += " = ";
     str += dic[eqOp];
@@ -1328,7 +1328,7 @@ std::pair<bool, int> EqExpWithOpAST::Output() const {
     cnt++;
 
   } else if (result_r.first) {
-    str += "  %";
+    str += "\t%";
     str += std::to_string(cnt);
     str += " = ";
     str += dic[eqOp];
@@ -1340,7 +1340,7 @@ std::pair<bool, int> EqExpWithOpAST::Output() const {
     cnt++;
 
   } else {
-    str += "  %";
+    str += "\t%";
     str += std::to_string(cnt);
     str += " = ";
     str += dic[eqOp];
@@ -1373,7 +1373,7 @@ bool filter(int input) {
     return true;
   }
 
-  str += "  %";
+  str += "\t%";
   str += std::to_string(cnt);
   str += " = ";
   str += "ne";
@@ -1394,11 +1394,11 @@ void LAndExpWithOpAST::Dump() const {
 }
 
 std::pair<bool, int> LAndExpWithOpAST::Output() const {
-  str += "  %result_";
+  str += "\t%result_";
   str += std::to_string(if_cnt + 1);
   str += " = alloc i32";
   str += "\n";
-  str += "  store 0, %result_";
+  str += "\tstore 0, %result_";
   str += std::to_string(if_cnt + 1);
   str += "\n";
 
@@ -1409,14 +1409,14 @@ std::pair<bool, int> LAndExpWithOpAST::Output() const {
   int cnt_l = cnt - 1;
 
   if (result_l.first) {
-    str += "  %";
+    str += "\t%";
     str += std::to_string(cnt);
     cnt++;
     str += " = ne ";
     str += std::to_string(result_l.second);
     str += ", 0\n";
   } else {
-    str += "  %";
+    str += "\t%";
     str += std::to_string(cnt);
     cnt++;
     str += " = ne %";
@@ -1424,7 +1424,7 @@ std::pair<bool, int> LAndExpWithOpAST::Output() const {
     str += ", 0\n";
   }
 
-  str += "  br %";
+  str += "\tbr %";
   str += std::to_string(cnt - 1);
   str += ", %then";
   str += "_";
@@ -1443,14 +1443,14 @@ std::pair<bool, int> LAndExpWithOpAST::Output() const {
   int cnt_r = cnt - 1;
 
   if (result_r.first) {
-    str += "  %";
+    str += "\t%";
     str += std::to_string(cnt);
     cnt++;
     str += " = ne ";
     str += std::to_string(result_r.second);
     str += ", 0\n";
   } else {
-    str += "  %";
+    str += "\t%";
     str += std::to_string(cnt);
     cnt++;
     str += " = ne %";
@@ -1458,13 +1458,13 @@ std::pair<bool, int> LAndExpWithOpAST::Output() const {
     str += ", 0\n";
   }
 
-  str += "  store %";
+  str += "\tstore %";
   str += std::to_string(cnt - 1);
   str += ", %result_";
   str += std::to_string(cur_if);
   str += "\n";
 
-  str += "  jump %end";
+  str += "\tjump %end";
   str += "_";
   str += std::to_string(cur_if);
   str += "\n";
@@ -1474,7 +1474,7 @@ std::pair<bool, int> LAndExpWithOpAST::Output() const {
   str += std::to_string(cur_if);
   str += ":\n";
 
-  str += "  %";
+  str += "\t%";
   str += std::to_string(cnt);
   cnt++;
   str += " = load %result_";
@@ -1503,11 +1503,11 @@ void LOrExpWithOpAST::Dump() const {
 }
 
 std::pair<bool, int> LOrExpWithOpAST::Output() const {
-  str += "  %result_";
+  str += "\t%result_";
   str += std::to_string(if_cnt + 1);
   str += " = alloc i32";
   str += "\n";
-  str += "  store 1, %result_";
+  str += "\tstore 1, %result_";
   str += std::to_string(if_cnt + 1);
   str += "\n";
 
@@ -1518,14 +1518,14 @@ std::pair<bool, int> LOrExpWithOpAST::Output() const {
   int cnt_l = cnt - 1;
 
   if (result_l.first) {
-    str += "  %";
+    str += "\t%";
     str += std::to_string(cnt);
     cnt++;
     str += " = eq ";
     str += std::to_string(result_l.second);
     str += ", 0\n";
   } else {
-    str += "  %";
+    str += "\t%";
     str += std::to_string(cnt);
     cnt++;
     str += " = eq %";
@@ -1533,7 +1533,7 @@ std::pair<bool, int> LOrExpWithOpAST::Output() const {
     str += ", 0\n";
   }
 
-  str += "  br %";
+  str += "\tbr %";
   str += std::to_string(cnt - 1);
   str += ", %then";
   str += "_";
@@ -1552,14 +1552,14 @@ std::pair<bool, int> LOrExpWithOpAST::Output() const {
   int cnt_r = cnt - 1;
 
   if (result_r.first) {
-    str += "  %";
+    str += "\t%";
     str += std::to_string(cnt);
     cnt++;
     str += " = ne ";
     str += std::to_string(result_r.second);
     str += ", 0\n";
   } else {
-    str += "  %";
+    str += "\t%";
     str += std::to_string(cnt);
     cnt++;
     str += " = ne %";
@@ -1567,13 +1567,13 @@ std::pair<bool, int> LOrExpWithOpAST::Output() const {
     str += ", 0\n";
   }
 
-  str += "  store %";
+  str += "\tstore %";
   str += std::to_string(cnt - 1);
   str += ", %result_";
   str += std::to_string(cur_if);
   str += "\n";
 
-  str += "  jump %end";
+  str += "\tjump %end";
   str += "_";
   str += std::to_string(cur_if);
   str += "\n";
@@ -1583,7 +1583,7 @@ std::pair<bool, int> LOrExpWithOpAST::Output() const {
   str += std::to_string(cur_if);
   str += ":\n";
 
-  str += "  %";
+  str += "\t%";
   str += std::to_string(cnt);
   cnt++;
   str += " = load %result_";

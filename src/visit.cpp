@@ -61,8 +61,8 @@ void Visit(const koopa_raw_function_t& func) {
   has_call = 0;
 
   // 执行一些其他的必要操作
-  cout << "  .text\n";
-  cout << "  .globl " << func->name + 1 << "\n";
+  cout << "\t.text\n";
+  cout << "\t.globl " << func->name + 1 << "\n";
   cout << func->name + 1 << ":\n";
 
   // 记录函数内部局部变量数量
@@ -162,10 +162,10 @@ void Visit(const koopa_raw_value_t& value) {
 }
 
 void Search(const koopa_raw_value_t value) {
-  // cout << "  TAG: " << value->kind.tag << "\n";
+  // cout << "\tTAG: " << value->kind.tag << "\n";
 
   if (value->kind.tag == KOOPA_RVT_INTEGER && value->kind.data.integer.value != 0) {
-    cout << "  li t" << reg_cnt << ", ";
+    cout << "\tli t" << reg_cnt << ", ";
     Visit(value->kind.data.integer);
     cout << "\n";
 
@@ -174,7 +174,7 @@ void Search(const koopa_raw_value_t value) {
   } else if (value->kind.tag == KOOPA_RVT_INTEGER && value->kind.data.integer.value == 0) {
     dic[value] = "x0";
   } else if (value->kind.tag == KOOPA_RVT_ALLOC || value->kind.tag == KOOPA_RVT_LOAD || value->kind.tag == KOOPA_RVT_BINARY || value->kind.tag == KOOPA_RVT_CALL) {
-    cout << "  lw t" << reg_cnt << ", " << dic[value] << "\n";
+    cout << "\tlw t" << reg_cnt << ", " << dic[value] << "\n";
     dic[value] = "t" + to_string(reg_cnt);
     reg_cnt++;
   } else if (value->kind.tag == KOOPA_RVT_FUNC_ARG_REF) {
@@ -214,10 +214,10 @@ void Visit(const koopa_raw_load_t& load, const koopa_raw_value_t& value) {
     cout << "\tla t0, " << dic[load.src] << "\n";
     cout << "\tlw t0, 0(t0)" << "\n";
   } else {
-    cout << "  lw t0, " << dic[load.src] << "\n";
+    cout << "\tlw t0, " << dic[load.src] << "\n";
   }
   
-  cout << "  sw t0, " << stack_cnt * 4 << "(sp)"
+  cout << "\tsw t0, " << stack_cnt * 4 << "(sp)"
        << "\n";
   dic[value] = to_string(stack_cnt * 4) + "(sp)";
   stack_cnt++;
@@ -236,7 +236,7 @@ void Visit(const koopa_raw_store_t& store) {
     reg_cnt++;
     cout << "\tsw " << dic[store.value] << ", " << "0(t" << reg_cnt-1 << ")\n";
   } else {
-    cout << "  sw " << dic[store.value] << ", " << dic[store.dest] << "\n";
+    cout << "\tsw " << dic[store.value] << ", " << dic[store.dest] << "\n";
   }
 }
 
@@ -255,12 +255,12 @@ void Visit(const koopa_raw_binary_t& binary, const koopa_raw_value_t& value) {
       Search(binary.lhs);
       Search(binary.rhs);
 
-      cout << "  xor t0"
+      cout << "\txor t0"
            << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
-      cout << "  snez t0"
+      cout << "\tsnez t0"
            << ", t0"
            << "\n";
-      cout << "  sw t0, " << stack_cnt * 4 << "(sp)"
+      cout << "\tsw t0, " << stack_cnt * 4 << "(sp)"
            << "\n";
 
       dic[value] = to_string(stack_cnt * 4) + "(sp)";
@@ -276,12 +276,12 @@ void Visit(const koopa_raw_binary_t& binary, const koopa_raw_value_t& value) {
       Search(binary.lhs);
       Search(binary.rhs);
 
-      cout << "  xor t0"
+      cout << "\txor t0"
            << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
-      cout << "  seqz t0"
+      cout << "\tseqz t0"
            << ", t0"
            << "\n";
-      cout << "  sw t0, " << stack_cnt * 4 << "(sp)"
+      cout << "\tsw t0, " << stack_cnt * 4 << "(sp)"
            << "\n";
 
       dic[value] = to_string(stack_cnt * 4) + "(sp)";
@@ -297,9 +297,9 @@ void Visit(const koopa_raw_binary_t& binary, const koopa_raw_value_t& value) {
       Search(binary.lhs);
       Search(binary.rhs);
 
-      cout << "  sgt t0"
+      cout << "\tsgt t0"
            << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
-      cout << "  sw t0, " << stack_cnt * 4 << "(sp)"
+      cout << "\tsw t0, " << stack_cnt * 4 << "(sp)"
            << "\n";
 
       dic[value] = to_string(stack_cnt * 4) + "(sp)";
@@ -315,9 +315,9 @@ void Visit(const koopa_raw_binary_t& binary, const koopa_raw_value_t& value) {
       Search(binary.lhs);
       Search(binary.rhs);
 
-      cout << "  slt t0"
+      cout << "\tslt t0"
            << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
-      cout << "  sw t0, " << stack_cnt * 4 << "(sp)"
+      cout << "\tsw t0, " << stack_cnt * 4 << "(sp)"
            << "\n";
 
       dic[value] = to_string(stack_cnt * 4) + "(sp)";
@@ -333,12 +333,12 @@ void Visit(const koopa_raw_binary_t& binary, const koopa_raw_value_t& value) {
       Search(binary.lhs);
       Search(binary.rhs);
 
-      cout << "  slt t0"
+      cout << "\tslt t0"
            << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
-      cout << "  seqz t0"
+      cout << "\tseqz t0"
            << ", t0"
            << "\n";
-      cout << "  sw t0, " << stack_cnt * 4 << "(sp)"
+      cout << "\tsw t0, " << stack_cnt * 4 << "(sp)"
            << "\n";
 
       dic[value] = to_string(stack_cnt * 4) + "(sp)";
@@ -354,11 +354,11 @@ void Visit(const koopa_raw_binary_t& binary, const koopa_raw_value_t& value) {
       Search(binary.lhs);
       Search(binary.rhs);
 
-      cout << "  sgt t0"
+      cout << "\tsgt t0"
            << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
-      cout << "  seqz t0, t0"
+      cout << "\tseqz t0, t0"
            << "\n";
-      cout << "  sw t0, " << stack_cnt * 4 << "(sp)"
+      cout << "\tsw t0, " << stack_cnt * 4 << "(sp)"
            << "\n";
 
       dic[value] = to_string(stack_cnt * 4) + "(sp)";
@@ -374,9 +374,9 @@ void Visit(const koopa_raw_binary_t& binary, const koopa_raw_value_t& value) {
       Search(binary.lhs);
       Search(binary.rhs);
 
-      cout << "  add t0"
+      cout << "\tadd t0"
            << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
-      cout << "  sw t0, " << stack_cnt * 4 << "(sp)"
+      cout << "\tsw t0, " << stack_cnt * 4 << "(sp)"
            << "\n";
 
       dic[value] = to_string(stack_cnt * 4) + "(sp)";
@@ -392,9 +392,9 @@ void Visit(const koopa_raw_binary_t& binary, const koopa_raw_value_t& value) {
       Search(binary.lhs);
       Search(binary.rhs);
 
-      cout << "  sub t0"
+      cout << "\tsub t0"
            << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
-      cout << "  sw t0, " << stack_cnt * 4 << "(sp)"
+      cout << "\tsw t0, " << stack_cnt * 4 << "(sp)"
            << "\n";
 
       dic[value] = to_string(stack_cnt * 4) + "(sp)";
@@ -410,9 +410,9 @@ void Visit(const koopa_raw_binary_t& binary, const koopa_raw_value_t& value) {
       Search(binary.lhs);
       Search(binary.rhs);
 
-      cout << "  mul t0"
+      cout << "\tmul t0"
            << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
-      cout << "  sw t0, " << stack_cnt * 4 << "(sp)"
+      cout << "\tsw t0, " << stack_cnt * 4 << "(sp)"
            << "\n";
 
       dic[value] = to_string(stack_cnt * 4) + "(sp)";
@@ -428,9 +428,9 @@ void Visit(const koopa_raw_binary_t& binary, const koopa_raw_value_t& value) {
       Search(binary.lhs);
       Search(binary.rhs);
 
-      cout << "  div t0"
+      cout << "\tdiv t0"
            << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
-      cout << "  sw t0, " << stack_cnt * 4 << "(sp)"
+      cout << "\tsw t0, " << stack_cnt * 4 << "(sp)"
            << "\n";
 
       dic[value] = to_string(stack_cnt * 4) + "(sp)";
@@ -446,9 +446,9 @@ void Visit(const koopa_raw_binary_t& binary, const koopa_raw_value_t& value) {
       Search(binary.lhs);
       Search(binary.rhs);
 
-      cout << "  rem t0"
+      cout << "\trem t0"
            << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
-      cout << "  sw t0, " << stack_cnt * 4 << "(sp)"
+      cout << "\tsw t0, " << stack_cnt * 4 << "(sp)"
            << "\n";
 
       dic[value] = to_string(stack_cnt * 4) + "(sp)";
@@ -465,33 +465,33 @@ void Visit(const koopa_raw_binary_t& binary, const koopa_raw_value_t& value) {
       bool int_r = isNum(binary.rhs);
 
       if (int_l && int_r) {
-        cout << "  li t" << reg_cnt << ", ";
+        cout << "\tli t" << reg_cnt << ", ";
         Visit(binary.lhs->kind.data.integer);
         cout << "\n";
 
         dic[binary.lhs] = "t" + to_string(reg_cnt);
         reg_cnt++;
 
-        cout << "  andi t0"
+        cout << "\tandi t0"
              << ", " << dic[binary.lhs] << ", ";
         Visit(binary.lhs->kind.data.integer);
         cout << "\n";
       } else if (int_l && !int_r) {
-        cout << "  andi t0"
+        cout << "\tandi t0"
              << ", " << dic[binary.rhs] << ", ";
         Visit(binary.lhs->kind.data.integer);
         cout << "\n";
       } else if (!int_l && int_r) {
-        cout << "  andi t0"
+        cout << "\tandi t0"
              << ", " << dic[binary.lhs] << ", ";
         Visit(binary.rhs->kind.data.integer);
         cout << "\n";
       } else {
-        cout << "  and t0"
+        cout << "\tand t0"
              << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
       }
 
-      cout << "  sw t0, " << stack_cnt * 4 << "(sp)"
+      cout << "\tsw t0, " << stack_cnt * 4 << "(sp)"
            << "\n";
 
       dic[value] = to_string(stack_cnt * 4) + "(sp)";
@@ -508,33 +508,33 @@ void Visit(const koopa_raw_binary_t& binary, const koopa_raw_value_t& value) {
       bool int_r = isNum(binary.rhs);
 
       if (int_l && int_r) {
-        cout << "  li t" << reg_cnt << ", ";
+        cout << "\tli t" << reg_cnt << ", ";
         Visit(binary.lhs->kind.data.integer);
         cout << "\n";
 
         dic[binary.lhs] = "t" + to_string(reg_cnt);
         reg_cnt++;
 
-        cout << "  ori t0"
+        cout << "\tori t0"
              << ", " << dic[binary.lhs] << ", ";
         Visit(binary.lhs->kind.data.integer);
         cout << "\n";
       } else if (int_l && !int_r) {
-        cout << "  ori t0"
+        cout << "\tori t0"
              << ", " << dic[binary.rhs] << ", ";
         Visit(binary.lhs->kind.data.integer);
         cout << "\n";
       } else if (!int_l && int_r) {
-        cout << "  ori t0"
+        cout << "\tori t0"
              << ", " << dic[binary.lhs] << ", ";
         Visit(binary.rhs->kind.data.integer);
         cout << "\n";
       } else {
-        cout << "  or t0"
+        cout << "\tor t0"
              << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
       }
 
-      cout << "  sw t0, " << stack_cnt * 4 << "(sp)"
+      cout << "\tsw t0, " << stack_cnt * 4 << "(sp)"
            << "\n";
 
       dic[value] = to_string(stack_cnt * 4) + "(sp)";
@@ -552,7 +552,7 @@ bool isNum(const koopa_raw_value_t value) {
   if (value->kind.tag == KOOPA_RVT_INTEGER) {
     return true;
   }
-  cout << "  lw t" << reg_cnt << ", " << dic[value] << "\n";
+  cout << "\tlw t" << reg_cnt << ", " << dic[value] << "\n";
   dic[value] = "t" + to_string(reg_cnt);
   reg_cnt++;
   return false;
@@ -561,12 +561,12 @@ bool isNum(const koopa_raw_value_t value) {
 void Visit(const koopa_raw_branch_t& branch) {
   reg_cnt = 0;
   Search(branch.cond);
-  cout << "  bnez " << dic[branch.cond] << ", " << branch.true_bb->name + 1 << "\n";
-  cout << "  j " << branch.false_bb->name + 1 << "\n";
+  cout << "\tbnez " << dic[branch.cond] << ", " << branch.true_bb->name + 1 << "\n";
+  cout << "\tj " << branch.false_bb->name + 1 << "\n";
 }
 
 void Visit(const koopa_raw_jump_t& jump) {
-  cout << "  j " << jump.target->name + 1 << "\n";
+  cout << "\tj " << jump.target->name + 1 << "\n";
 }
 
 void Visit(const koopa_raw_call_t& call, const koopa_raw_value_t& value) {
@@ -606,13 +606,13 @@ void Visit(const koopa_raw_call_t& call, const koopa_raw_value_t& value) {
 void Visit(const koopa_raw_return_t& ret) {
   if (ret.value != nullptr) {
     if (ret.value->kind.tag == KOOPA_RVT_INTEGER) {
-      cout << "  li a0, ";
+      cout << "\tli a0, ";
       Visit(ret.value->kind.data.integer);
       cout << "\n";
     } else if (ret.value->kind.tag == KOOPA_RVT_BINARY || ret.value->kind.tag == KOOPA_RVT_LOAD || ret.value->kind.tag == KOOPA_RVT_CALL) {
-      cout << "  lw a0, " << dic[ret.value] << "\n";
+      cout << "\tlw a0, " << dic[ret.value] << "\n";
     } else {
-      cout << "  ERROR: Undefined Tag: " << ret.value->kind.tag << "\n";
+      cout << "\tERROR: Undefined Tag: " << ret.value->kind.tag << "\n";
     }
   }
 
