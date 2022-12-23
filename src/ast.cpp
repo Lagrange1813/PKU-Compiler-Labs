@@ -10,6 +10,8 @@ int while_level = -1;
 int while_cnt = -1;
 // 当前块
 int cur_block = 0;
+// 用于全局变量生成不同 ir
+bool is_global_area = false;
 // 父子块关系记录
 std::unordered_map<int, int> parent;
 // 记录当前块是否终止
@@ -79,11 +81,9 @@ std::tuple<value_type, int, int, func_type> fetchSymbol(const std::string& key) 
     } else {
       if ((*symbol_tables[cur])[key]->type == CONSTANT || (*symbol_tables[cur])[key]->type == VARIABLE) {
         return std::make_tuple((*symbol_tables[cur])[key]->type, (*symbol_tables[cur])[key]->value.val, cur, UND);
-      }
-      else if ((*symbol_tables[cur])[key]->type == FUNCTION) {
+      } else if ((*symbol_tables[cur])[key]->type == FUNCTION) {
         return std::make_tuple((*symbol_tables[cur])[key]->type, 0, cur, (*symbol_tables[cur])[key]->value.type);
-      }
-      else
+      } else
         assert(false);
     }
   }
@@ -146,15 +146,40 @@ std::pair<bool, int> CompUnitAST::Output() const {
   return std::pair<bool, int>(false, 0);
 }
 
-void CompUnitSubAST::Dump() const {
-  std::cout << "CompUnitSubAST { ";
+void CompUnitSubWithDeclAST::Dump() const {
+  std::cout << "CompUnitSubWithDeclAST { ";
+  if (compUnit)
+    (*compUnit)->Dump();
+  decl->Dump();
+  std::cout << "} ";
+}
+
+std::pair<bool, int> CompUnitSubWithDeclAST::Output() const {
+  if (compUnit)
+    (*compUnit)->Output();
+
+  auto decl_p = decl.get();
+  if (typeid(*decl_p) == typeid(DeclWithVarAST)) {
+    // 全局区域
+    is_global_area = true;
+    decl->Output();
+    is_global_area = false;
+  } else {
+    decl->Output();
+  }
+
+  return std::pair<bool, int>(false, 0);
+}
+
+void CompUnitSubWithFuncAST::Dump() const {
+  std::cout << "CompUnitSubWithFuncAST { ";
   if (compUnit)
     (*compUnit)->Dump();
   func_def->Dump();
   std::cout << "} ";
 }
 
-std::pair<bool, int> CompUnitSubAST::Output() const {
+std::pair<bool, int> CompUnitSubWithFuncAST::Output() const {
   if (compUnit)
     (*compUnit)->Output();
   func_def->Output();
@@ -185,7 +210,7 @@ std::pair<bool, int> DeclWithVarAST::Output() const {
 
 void ConstDeclAST::Dump() const {
   std::cout << "ConstDeclAST { ";
-  bType->Dump();
+  std::cout << "BTypeAST { " << bType << " } ";
   for (auto& constDef : constDefList) {
     constDef->Dump();
   }
@@ -196,14 +221,6 @@ std::pair<bool, int> ConstDeclAST::Output() const {
   for (auto& constDef : constDefList) {
     constDef->Output();
   }
-  return std::pair<bool, int>(false, 0);
-}
-
-void BTypeAST::Dump() const {
-  std::cout << "BTypeAST { " << type << " } ";
-}
-
-std::pair<bool, int> BTypeAST::Output() const {
   return std::pair<bool, int>(false, 0);
 }
 
@@ -233,7 +250,7 @@ std::pair<bool, int> ConstInitValAST::Output() const {
 
 void VarDeclAST::Dump() const {
   std::cout << "VarDeclAST { ";
-  bType->Dump();
+  std::cout << "BTypeAST { " << bType << " } ";
   for (auto& varDef : varDefList) {
     varDef->Dump();
   }
@@ -254,11 +271,19 @@ void VarDefAST::Dump() const {
 }
 
 std::pair<bool, int> VarDefAST::Output() const {
-  str += "  @";
-  str += ident;
-  str += "_";
-  str += std::to_string(cur_block);
-  str += " = alloc i32\n";
+  if (is_global_area) {
+    str += "global @";
+    str += ident;
+    str += "_";
+    str += std::to_string(cur_block);
+    str += " = alloc i32, zeroinit\n\n";
+  } else {
+    str += "\t@";
+    str += ident;
+    str += "_";
+    str += std::to_string(cur_block);
+    str += " = alloc i32\n";
+  }
 
   insertSymbol(ident, VARIABLE, 0, UND);
   return std::pair<bool, int>(false, 0);
@@ -273,28 +298,42 @@ void VarDefWithAssignAST::Dump() const {
 
 std::pair<bool, int> VarDefWithAssignAST::Output() const {
   std::pair<bool, int> result = initVal->Output();
-  str += "  @";
+  if (is_global_area)
+    str += "global @";
+  else
+    str += "\t@";
   str += ident;
   str += "_";
   str += std::to_string(cur_block);
   str += " = alloc i32\n";
 
-  if (result.first) {
-    str += "  store ";
-    str += std::to_string(result.second);
-    str += ", @";
-    str += ident;
-    str += "_";
-    str += std::to_string(cur_block);
-    str += "\n";
+  if (is_global_area) {
+    str.pop_back();
+    if (result.first) {
+      str += ", ";
+      str += std::to_string(result.second);
+      str += "\n\n";
+    } else {
+      assert(false);
+    }
   } else {
-    str += "  store %";
-    str += std::to_string(cnt - 1);
-    str += ", @";
-    str += ident;
-    str += "_";
-    str += std::to_string(cur_block);
-    str += "\n";
+    if (result.first) {
+      str += "  store ";
+      str += std::to_string(result.second);
+      str += ", @";
+      str += ident;
+      str += "_";
+      str += std::to_string(cur_block);
+      str += "\n";
+    } else {
+      str += "  store %";
+      str += std::to_string(cnt - 1);
+      str += ", @";
+      str += ident;
+      str += "_";
+      str += std::to_string(cur_block);
+      str += "\n";
+    }
   }
 
   insertSymbol(ident, VARIABLE, 0, UND);
@@ -313,7 +352,7 @@ std::pair<bool, int> InitValAST::Output() const {
 
 void FuncDefAST::Dump() const {
   std::cout << "FuncDefAST { ";
-  funcType->Dump();
+  std::cout << "FuncTypeAST { " << funcType << " } ";
   std::cout << "Ident { " << ident << " } ";
   if (params)
     (*params)->Dump();
@@ -323,11 +362,10 @@ void FuncDefAST::Dump() const {
 
 std::pair<bool, int> FuncDefAST::Output() const {
   // 向当前符号表中插入该函数定义
-  std::string type = ((FuncTypeAST*)funcType.get())->type;
   func_type ty = UND;
-  if (type == "int")
+  if (funcType == "int")
     ty = INT;
-  else if (type == "void")
+  else if (funcType == "void")
     ty = VOID;
   insertSymbol(ident, FUNCTION, 0, ty);
 
@@ -351,7 +389,8 @@ std::pair<bool, int> FuncDefAST::Output() const {
   if (params)
     (*params)->Output();
   str += ")";
-  funcType->Output();
+  if (funcType == "int")
+    str += ": i32";
   str += " {\n";
   str += "\%entry:\n";
 
@@ -361,26 +400,12 @@ std::pair<bool, int> FuncDefAST::Output() const {
   block->Output();
 
   // 无返回值补 ret
-  if (((FuncTypeAST*)funcType.get())->type == "void" && !is_block_end[cur_block])
+  if (funcType == "void" && !is_block_end[cur_block])
     str += "\tret\n";
 
   str += "}\n\n";
 
   cur_block = parent[cur_block];
-  return std::pair<bool, int>(false, 0);
-}
-
-void FuncTypeAST::Dump() const {
-  std::cout << "FuncTypeAST { ";
-  std::cout << type;
-  std::cout << " } ";
-}
-
-std::pair<bool, int> FuncTypeAST::Output() const {
-  if (type == "int") {
-    str += ": i32";
-  }
-
   return std::pair<bool, int>(false, 0);
 }
 
@@ -409,7 +434,7 @@ void FuncFParamsAST::declare() {
 
 void FuncFParamAST::Dump() const {
   std::cout << "FuncFParamAST { ";
-  bType->Dump();
+  std::cout << "BTypeAST { " << bType << " } ";
   std::cout << "Ident { " << ident << " } ";
   std::cout << "} ";
 }
@@ -417,7 +442,7 @@ void FuncFParamAST::Dump() const {
 std::pair<bool, int> FuncFParamAST::Output() const {
   str += "@";
   str += ident;
-  if (((BTypeAST*)bType.get())->type == "int")
+  if (bType == "int")
     str += ": i32";
   else
     assert(false);
@@ -766,21 +791,26 @@ std::pair<bool, int> StmtWithContinueAST::Output() const {
 
 void StmtWithReturnAST::Dump() const {
   std::cout << "StmtWithReturnAST { ";
-  exp->Dump();
+  if (exp)
+    (*exp)->Dump();
   std::cout << "} ";
 }
 
 std::pair<bool, int> StmtWithReturnAST::Output() const {
-  std::pair<bool, int> result = exp->Output();
+  if (exp) {
+    std::pair<bool, int> result = (*exp)->Output();
 
-  if (result.first) {
-    str += "  ret ";
-    str += std::to_string(result.second);
-    str += "\n";
+    if (result.first) {
+      str += "  ret ";
+      str += std::to_string(result.second);
+      str += "\n";
+    } else {
+      str += "  ret %";
+      str += std::to_string(cnt - 1);
+      str += "\n";
+    }
   } else {
-    str += "  ret %";
-    str += std::to_string(cnt - 1);
-    str += "\n";
+    str += "\tret\n";
   }
 
   is_block_end[cur_block] = true;

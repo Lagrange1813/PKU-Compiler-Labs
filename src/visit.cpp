@@ -12,6 +12,7 @@ int stack_space = 0;
 int stack_cnt = 0;
 // 记录函数内有无调用
 int has_call = 0;
+int global_cnt = -1;
 
 // Just use for single instructions.
 int reg_cnt = 0;
@@ -119,6 +120,9 @@ void Visit(const koopa_raw_value_t& value) {
       break;
     case KOOPA_RVT_ALLOC:
       break;
+    case KOOPA_RVT_GLOBAL_ALLOC:
+      Visit(kind.data.global_alloc, value);
+      break;
     case KOOPA_RVT_LOAD:
       // 访问 load 指令
       Visit(kind.data.load, value);
@@ -176,8 +180,35 @@ void Search(const koopa_raw_value_t value) {
   }
 }
 
+void Visit(const koopa_raw_global_alloc_t& global, const koopa_raw_value_t& value) {
+  global_cnt++;
+  cout << "\t.data\n";
+  string label = "var_" + to_string(global_cnt);
+  cout << "\t.globl " << label << "\n";
+  cout << label << ":\n";
+  switch (global.init->kind.tag) {
+  case KOOPA_RVT_ZERO_INIT:
+    cout << "\t.zero 4\n\n";
+    break;
+  case KOOPA_RVT_INTEGER:
+    cout << "\t.word " << global.init->kind.data.integer.value << "\n\n";
+    break;
+  default:
+    cout << "\tTAG: " << global.init->kind.tag << "\n";
+    assert(false);
+    break;
+  }
+  dic[value] = label;
+}
+
 void Visit(const koopa_raw_load_t& load, const koopa_raw_value_t& value) {
-  cout << "  lw t0, " << dic[load.src] << "\n";
+  if (load.src->kind.tag == KOOPA_RVT_GLOBAL_ALLOC) {
+    cout << "\tla t0, " << dic[load.src] << "\n";
+    cout << "\tlw t0, 0(t0)" << "\n";
+  } else {
+    cout << "  lw t0, " << dic[load.src] << "\n";
+  }
+  
   cout << "  sw t0, " << stack_cnt * 4 << "(sp)"
        << "\n";
   dic[value] = to_string(stack_cnt * 4) + "(sp)";

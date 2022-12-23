@@ -28,7 +28,16 @@ class CompUnitAST : public BaseAST {
   std::pair<bool, int> Output() const override;
 };
 
-class CompUnitSubAST : public BaseAST {
+class CompUnitSubWithDeclAST : public BaseAST {
+ public:
+  std::optional<std::unique_ptr<BaseAST>> compUnit;
+  std::unique_ptr<BaseAST> decl;
+
+  void Dump() const override;
+  std::pair<bool, int> Output() const override;
+};
+
+class CompUnitSubWithFuncAST : public BaseAST {
  public:
   std::optional<std::unique_ptr<BaseAST>> compUnit;
   std::unique_ptr<BaseAST> func_def;
@@ -55,16 +64,8 @@ class DeclWithVarAST : public BaseAST {
 
 class ConstDeclAST : public BaseAST {
  public:
-  std::unique_ptr<BaseAST> bType;
+  std::string bType;
   std::vector<std::unique_ptr<BaseAST>> constDefList;
-
-  void Dump() const override;
-  std::pair<bool, int> Output() const override;
-};
-
-class BTypeAST : public BaseAST {
- public:
-  std::string type;
 
   void Dump() const override;
   std::pair<bool, int> Output() const override;
@@ -89,7 +90,7 @@ class ConstInitValAST : public BaseAST {
 
 class VarDeclAST : public BaseAST {
  public:
-  std::unique_ptr<BaseAST> bType;
+  std::string bType;
   std::vector<std::unique_ptr<BaseAST>> varDefList;
 
   void Dump() const override;
@@ -123,18 +124,10 @@ class InitValAST : public BaseAST {
 
 class FuncDefAST : public BaseAST {
  public:
-  std::unique_ptr<BaseAST> funcType;
+  std::string funcType;
   std::string ident;
   std::optional<std::unique_ptr<BaseAST>> params;
   std::unique_ptr<BaseAST> block;
-
-  void Dump() const override;
-  std::pair<bool, int> Output() const override;
-};
-
-class FuncTypeAST : public BaseAST {
- public:
-  std::string type;
 
   void Dump() const override;
   std::pair<bool, int> Output() const override;
@@ -152,7 +145,7 @@ class FuncFParamsAST : public BaseAST {
 
 class FuncFParamAST : public BaseAST {
  public:
-  std::unique_ptr<BaseAST> bType;
+  std::string bType;
   std::string ident;
 
   void Dump() const override;
@@ -243,7 +236,7 @@ class StmtWithContinueAST : public BaseAST {
 
 class StmtWithReturnAST : public BaseAST {
  public:
-  std::unique_ptr<BaseAST> exp;
+  std::optional<std::unique_ptr<BaseAST>> exp;
 
   void Dump() const override;
   std::pair<bool, int> Output() const override;
