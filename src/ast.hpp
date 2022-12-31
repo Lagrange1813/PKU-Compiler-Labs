@@ -74,6 +74,7 @@ class ConstDeclAST : public BaseAST {
 class ConstDefAST : public BaseAST {
  public:
   std::string ident;
+  std::optional<std::unique_ptr<BaseAST>> constExp;
   std::unique_ptr<BaseAST> constInitVal;
 
   void Dump() const override;
@@ -88,6 +89,15 @@ class ConstInitValAST : public BaseAST {
   std::pair<bool, int> Output() const override;
 };
 
+class ConstInitValWithListAST : public BaseAST {
+ public:
+  std::vector<std::unique_ptr<BaseAST>> constExpList;
+
+  void Dump() const override;
+  std::pair<bool, int> Output() const override;
+  std::vector<int> prepare();
+};
+
 class VarDeclAST : public BaseAST {
  public:
   std::string bType;
@@ -100,6 +110,7 @@ class VarDeclAST : public BaseAST {
 class VarDefAST : public BaseAST {
  public:
   std::string ident;
+  std::optional<std::unique_ptr<BaseAST>> constExp;
 
   void Dump() const override;
   std::pair<bool, int> Output() const override;
@@ -108,6 +119,7 @@ class VarDefAST : public BaseAST {
 class VarDefWithAssignAST : public BaseAST {
  public:
   std::string ident;
+  std::optional<std::unique_ptr<BaseAST>> constExp;
   std::unique_ptr<BaseAST> initVal;
 
   void Dump() const override;
@@ -120,6 +132,15 @@ class InitValAST : public BaseAST {
 
   void Dump() const override;
   std::pair<bool, int> Output() const override;
+};
+
+class InitValWithListAST : public BaseAST {
+ public:
+  std::vector<std::unique_ptr<BaseAST>> expList;
+
+  void Dump() const override;
+  std::pair<bool, int> Output() const override;
+  std::vector<std::pair<bool, int>> prepare();
 };
 
 class FuncDefAST : public BaseAST {
@@ -253,6 +274,7 @@ class ExpAST : public BaseAST {
 class LValAST : public BaseAST {
  public:
   std::string ident;
+  std::optional<std::unique_ptr<BaseAST>> exp;
 
   void Dump() const override;
   std::pair<bool, int> Output() const override;

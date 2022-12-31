@@ -53,7 +53,7 @@ using namespace std;
 %type <ast_val> Block BlockItem Stmt 
 %type <ast_val> Exp LVal PrimaryExp UnaryExp MulExp AddExp RelExp EqExp LAndExp LOrExp ConstExp
 
-%type <vec_val> BlockItemList ConstDefList VarDefList FuncFParamList ExpList
+%type <vec_val> BlockItemList ConstDefList VarDefList FuncFParamList ExpList ConstExpList
 
 %type <int_val> Number
 
@@ -142,6 +142,13 @@ ConstDef
     ast->constInitVal = unique_ptr<BaseAST>($3);
     $$ = ast;
   }
+  | IDENT '[' ConstExp ']' '=' ConstInitVal {
+    auto ast = new ConstDefAST();
+    ast->ident = *unique_ptr<string>($1);
+    ast->constExp = make_optional(unique_ptr<BaseAST>($3));
+    ast->constInitVal = unique_ptr<BaseAST>($6);
+    $$ = ast;
+  }
   ;
 
 ConstInitVal
@@ -149,6 +156,30 @@ ConstInitVal
     auto ast = new ConstInitValAST();
     ast->constExp = unique_ptr<BaseAST>($1);
     $$ = ast;
+  }
+  | '{' '}' {
+    auto ast = new ConstInitValWithListAST();
+    $$ = ast;
+  }
+  | '{' ConstExp ConstExpList '}' {
+    auto ast = new ConstInitValWithListAST();
+    ast->constExpList.push_back(unique_ptr<BaseAST>($2));
+    vector<unique_ptr<BaseAST> > *vec = ($3);
+    for (auto it = vec->begin(); it != vec->end(); it++)
+      ast->constExpList.push_back(move(*it));
+    $$ = ast;
+  }
+  ;
+
+ConstExpList
+  : {
+    vector<unique_ptr<BaseAST>> *vec = new vector<unique_ptr<BaseAST>>;
+    $$ = vec;
+  }
+  | ConstExpList ',' ConstExp {
+    vector<unique_ptr<BaseAST>> *vec = ($1);
+    vec->push_back(unique_ptr<BaseAST>($3));
+    $$ = vec;
   }
   ;
 
@@ -183,10 +214,23 @@ VarDef
     ast->ident = *unique_ptr<string>($1);
     $$ = ast;
   }
+  | IDENT '[' ConstExp ']' {
+    auto ast = new VarDefAST();
+    ast->ident = *unique_ptr<string>($1);
+    ast->constExp = make_optional(unique_ptr<BaseAST>($3));
+    $$ = ast;
+  }
   | IDENT '=' InitVal {
     auto ast = new VarDefWithAssignAST();
     ast->ident = *unique_ptr<string>($1);
     ast->initVal = unique_ptr<BaseAST>($3);
+    $$ = ast;
+  }
+  | IDENT '[' ConstExp ']' '=' InitVal {
+    auto ast = new VarDefWithAssignAST();
+    ast->ident = *unique_ptr<string>($1);
+    ast->constExp = make_optional(unique_ptr<BaseAST>($3));
+    ast->initVal = unique_ptr<BaseAST>($6);
     $$ = ast;
   }
   ;
@@ -195,6 +239,18 @@ InitVal
   : Exp {
     auto ast = new InitValAST();
     ast->exp = unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }
+  | '{' '}' {
+    auto ast = new InitValWithListAST();
+    $$ = ast;
+  }
+  | '{' Exp ExpList '}' {
+    auto ast = new InitValWithListAST();
+    ast->expList.push_back(unique_ptr<BaseAST>($2));
+    vector<unique_ptr<BaseAST> > *vec = ($3);
+    for (auto it = vec->begin(); it != vec->end(); it++)
+      ast->expList.push_back(move(*it));
     $$ = ast;
   }
   ;
@@ -383,6 +439,12 @@ LVal
   : IDENT {
     auto ast = new LValAST();
     ast->ident = *unique_ptr<string>($1);
+    $$ = ast;
+  }
+  | IDENT '[' Exp ']' {
+    auto ast = new LValAST();
+    ast->ident = *unique_ptr<string>($1);
+    ast->exp = make_optional(unique_ptr<BaseAST>($3));
     $$ = ast;
   }
   ;

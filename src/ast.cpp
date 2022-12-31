@@ -22,6 +22,7 @@ std::unordered_map<int, int> level_to_cnt;
 typedef enum {
   CONSTANT,
   VARIABLE,
+
   FUNCTION,
   UNDEFINED,
 } value_type;
@@ -158,15 +159,15 @@ std::pair<bool, int> CompUnitSubWithDeclAST::Output() const {
   if (compUnit)
     (*compUnit)->Output();
 
-  auto decl_p = decl.get();
-  if (typeid(*decl_p) == typeid(DeclWithVarAST)) {
-    // 全局区域
-    is_global_area = true;
-    decl->Output();
-    is_global_area = false;
-  } else {
-    decl->Output();
-  }
+  // auto decl_p = decl.get();
+  // if (typeid(*decl_p) == typeid(DeclWithVarAST)) {
+  // 全局区域
+  is_global_area = true;
+  decl->Output();
+  is_global_area = false;
+  // } else {
+  //   decl->Output();
+  // }
 
   return std::pair<bool, int>(false, 0);
 }
@@ -227,13 +228,71 @@ std::pair<bool, int> ConstDeclAST::Output() const {
 void ConstDefAST::Dump() const {
   std::cout << "ConstDefAST { ";
   std::cout << "Ident { " << ident << " } ";
+  if (constExp)
+    (*constExp)->Dump();
   constInitVal->Dump();
   std::cout << "} ";
 }
 
 std::pair<bool, int> ConstDefAST::Output() const {
-  std::pair<bool, int> result = constInitVal->Output();
-  insertSymbol(ident, CONSTANT, result.second, UND);
+  if (constExp) {
+    auto size = search((ConstExpAST*)constExp->get());
+    auto result = ((ConstInitValWithListAST*)constInitVal.get())->prepare();
+    insertSymbol(ident, VARIABLE, 0, UND);
+    if (is_global_area) {
+      str += "global @";
+      str += ident;
+      str += "_";
+      str += std::to_string(cur_block);
+      str += " = alloc [i32, ";
+      str += std::to_string(size);
+      str += "], {";
+      for (int i = 0; i < size; i++) {
+        if (i < result.size())
+          str += std::to_string(result[i]);
+        else
+          str += "0";
+        if (i != size - 1)
+          str += ", ";
+      }
+      str += "}\n\n";
+    } else {
+      str += "\t@";
+      str += ident;
+      str += "_";
+      str += std::to_string(cur_block);
+      str += " = alloc [i32, ";
+      str += std::to_string(size);
+      str += "]\n";
+
+      for (int i = 0; i < size; i++) {
+        str += "\t%";
+        str += std::to_string(cnt);
+        cnt++;
+        str += " = getelemptr @";
+        str += ident;
+        str += "_";
+        str += std::to_string(cur_block);
+        str += ", ";
+        str += std::to_string(i);
+        str += "\n";
+
+        str += "\tstore ";
+
+        if (i < result.size())
+          str += std::to_string(result[i]);
+        else
+          str += "0";
+
+        str += ", %";
+        str += std::to_string(cnt - 1);
+        str += "\n";
+      }
+    }
+  } else {
+    std::pair<bool, int> result = constInitVal->Output();
+    insertSymbol(ident, CONSTANT, result.second, UND);
+  }
   return std::pair<bool, int>(false, 0);
 }
 
@@ -246,6 +305,26 @@ void ConstInitValAST::Dump() const {
 std::pair<bool, int> ConstInitValAST::Output() const {
   int ret = search((ConstExpAST*)constExp.get());
   return std::pair<bool, int>(true, ret);
+}
+
+void ConstInitValWithListAST::Dump() const {
+  std::cout << "ConstInitValWithListAST { ";
+  for (auto& constExp : constExpList)
+    constExp->Dump();
+  std::cout << "} ";
+}
+
+std::pair<bool, int> ConstInitValWithListAST::Output() const {
+  return std::pair<bool, int>(false, 0);
+}
+
+std::vector<int> ConstInitValWithListAST::prepare() {
+  std::vector<int> vec;
+  for (auto& constExp : constExpList) {
+    auto result = search((ConstExpAST*)constExp.get());
+    vec.push_back(result);
+  }
+  return vec;
 }
 
 void VarDeclAST::Dump() const {
@@ -267,22 +346,46 @@ std::pair<bool, int> VarDeclAST::Output() const {
 void VarDefAST::Dump() const {
   std::cout << "VarDefAST { ";
   std::cout << "Ident { " << ident << " } ";
+  if (constExp)
+    (*constExp)->Dump();
   std::cout << "} ";
 }
 
 std::pair<bool, int> VarDefAST::Output() const {
-  if (is_global_area) {
-    str += "global @";
-    str += ident;
-    str += "_";
-    str += std::to_string(cur_block);
-    str += " = alloc i32, zeroinit\n\n";
+  if (constExp) {
+    auto size = search((ConstExpAST*)constExp->get());
+    insertSymbol(ident, VARIABLE, 0, UND);
+    if (is_global_area) {
+      str += "global @";
+      str += ident;
+      str += "_";
+      str += std::to_string(cur_block);
+      str += " = alloc [i32, ";
+      str += std::to_string(size);
+      str += "], zeroinit\n\n";
+    } else {
+      str += "\t@";
+      str += ident;
+      str += "_";
+      str += std::to_string(cur_block);
+      str += " = alloc [i32, ";
+      str += std::to_string(size);
+      str += "]\n";
+    }
   } else {
-    str += "\t@";
-    str += ident;
-    str += "_";
-    str += std::to_string(cur_block);
-    str += " = alloc i32\n";
+    if (is_global_area) {
+      str += "global @";
+      str += ident;
+      str += "_";
+      str += std::to_string(cur_block);
+      str += " = alloc i32, zeroinit\n\n";
+    } else {
+      str += "\t@";
+      str += ident;
+      str += "_";
+      str += std::to_string(cur_block);
+      str += " = alloc i32\n";
+    }
   }
 
   insertSymbol(ident, VARIABLE, 0, UND);
@@ -292,51 +395,118 @@ std::pair<bool, int> VarDefAST::Output() const {
 void VarDefWithAssignAST::Dump() const {
   std::cout << "VarDefWithAssignAST { ";
   std::cout << "Ident { " << ident << "} ";
+  if (constExp)
+    (*constExp)->Dump();
   initVal->Dump();
   std::cout << " } ";
 }
 
 std::pair<bool, int> VarDefWithAssignAST::Output() const {
-  std::pair<bool, int> result = initVal->Output();
-  if (is_global_area)
-    str += "global @";
-  else
-    str += "\t@";
-  str += ident;
-  str += "_";
-  str += std::to_string(cur_block);
-  str += " = alloc i32\n";
-
-  if (is_global_area) {
-    str.pop_back();
-    if (result.first) {
-      str += ", ";
-      str += std::to_string(result.second);
-      str += "\n\n";
+  if (constExp) {
+    auto size = search((ConstExpAST*)constExp->get());
+    auto result = ((InitValWithListAST*)initVal.get())->prepare();
+    insertSymbol(ident, VARIABLE, 0, UND);
+    if (is_global_area) {
+      str += "global @";
+      str += ident;
+      str += "_";
+      str += std::to_string(cur_block);
+      str += " = alloc [i32, ";
+      str += std::to_string(size);
+      str += "], {";
+      for (int i = 0; i < size; i++) {
+        if (i < result.size()) {
+          if (!result[i].first)
+            assert(false);
+          str += std::to_string(result[i].second);
+        } else {
+          str += "0";
+        }
+        if (i != size - 1)
+          str += ", ";
+      }
+      str += "}\n\n";
     } else {
-      assert(false);
+      str += "\t@";
+      str += ident;
+      str += "_";
+      str += std::to_string(cur_block);
+      str += " = alloc [i32, ";
+      str += std::to_string(size);
+      str += "]\n";
+
+      for (int i = 0; i < size; i++) {
+        str += "\t%";
+        str += std::to_string(cnt);
+        cnt++;
+        str += " = getelemptr @";
+        str += ident;
+        str += "_";
+        str += std::to_string(cur_block);
+        str += ", ";
+        str += std::to_string(i);
+        str += "\n";
+
+        str += "\tstore ";
+
+        if (i < result.size()) {
+          if (result[i].first) {
+            str += std::to_string(result[i].second);
+          } else {
+            str += "%";
+            str += std::to_string(result[i].second);
+          }
+        } else {
+          str += "0";
+        }
+
+        str += ", %";
+        str += std::to_string(cnt - 1);
+        str += "\n";
+      }
     }
   } else {
-    if (result.first) {
-      str += "\tstore ";
-      str += std::to_string(result.second);
-      str += ", @";
-      str += ident;
-      str += "_";
-      str += std::to_string(cur_block);
-      str += "\n";
-    } else {
-      str += "\tstore %";
-      str += std::to_string(cnt - 1);
-      str += ", @";
-      str += ident;
-      str += "_";
-      str += std::to_string(cur_block);
-      str += "\n";
-    }
-  }
+    std::pair<bool, int> result = initVal->Output();
+    if (is_global_area)
+      str += "global @";
+    else
+      str += "\t@";
+    str += ident;
+    str += "_";
+    str += std::to_string(cur_block);
+    str += " = alloc i32\n";
 
-  insertSymbol(ident, VARIABLE, 0, UND);
+    if (is_global_area) {
+      str.pop_back();
+      if (result.first) {
+        str += ", ";
+        str += std::to_string(result.second);
+        str += "\n\n";
+      } else {
+        assert(false);
+      }
+    } else {
+      if (result.first) {
+        str += "\tstore ";
+        str += std::to_string(result.second);
+        str += ", @";
+        str += ident;
+        str += "_";
+        str += std::to_string(cur_block);
+        str += "\n";
+      } else {
+        str += "\tstore %";
+        str += std::to_string(cnt - 1);
+        str += ", @";
+        str += ident;
+        str += "_";
+        str += std::to_string(cur_block);
+        str += "\n";
+      }
+    }
+
+    insertSymbol(ident, VARIABLE, 0, UND);
+  }
   return std::pair<bool, int>(false, 0);
 }
 
@@ -348,6 +518,31 @@ void InitValAST::Dump() const {
 
 std::pair<bool, int> InitValAST::Output() const {
   return exp->Output();
+}
+
+void InitValWithListAST::Dump() const {
+  std::cout << "InitValWithListAST { ";
+  for (auto& exp : expList)
+    exp->Dump();
+  std::cout << "} ";
+}
+
+std::pair<bool, int> InitValWithListAST::Output() const {
+  return std::make_pair(false, 0);
+}
+
+std::vector<std::pair<bool, int>> InitValWithListAST::prepare() {
+  std::vector<std::pair<bool, int>> vec;
+  for (auto& exp : expList) {
+    auto result = exp->Output();
+    int cur = cnt - 1;
+    if (result.first) {
+      vec.push_back(std::make_pair(true, result.second));
+    } else {
+      vec.push_back(std::make_pair(false, cur));
+    }
+  }
+  return vec;
 }
 
 void FuncDefAST::Dump() const {
@@ -831,25 +1026,47 @@ std::pair<bool, int> ExpAST::Output() const {
 void LValAST::Dump() const {
   std::cout << "LValAST { ";
   std::cout << ident;
+  if (exp)
+    (*exp)->Dump();
   std::cout << " } ";
 }
 
 std::pair<bool, int> LValAST::Output() const {
-  auto result = fetchSymbol(ident);
-  if (std::get<0>(result) == CONSTANT)
-    return std::pair<bool, int>(true, std::get<1>(result));
-  else if (std::get<0>(result) == VARIABLE) {
+  if (exp) {
+    auto result = fetchSymbol(ident);
+    auto size = (*exp)->Output();
+    if (std::get<0>(result) == UNDEFINED)
+      assert(false);
     str += "\t%";
     str += std::to_string(cnt);
     cnt++;
-    str += " = load @";
+    str += " = getelemptr @";
     str += ident;
     str += "_";
-    str += std::to_string(std::get<2>(result));
+    str += std::to_string(cur_block);
+    str += ", ";
+    if (!size.first)
+      assert(false);
+    str += std::to_string(size.second);
     str += "\n";
   } else {
-    assert(false);
+    auto result = fetchSymbol(ident);
+    if (std::get<0>(result) == CONSTANT)
+      return std::pair<bool, int>(true, std::get<1>(result));
+    else if (std::get<0>(result) == VARIABLE) {
+      str += "\t%";
+      str += std::to_string(cnt);
+      cnt++;
+      str += " = load @";
+      str += ident;
+      str += "_";
+      str += std::to_string(std::get<2>(result));
+      str += "\n";
+    } else {
+      assert(false);
+    }
   }
+
   return std::pair<bool, int>(false, 0);
 }
 
