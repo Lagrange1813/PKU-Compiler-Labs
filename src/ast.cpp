@@ -1035,6 +1035,7 @@ std::pair<bool, int> LValAST::Output() const {
   if (exp) {
     auto result = fetchSymbol(ident);
     auto size = (*exp)->Output();
+    int exp_cnt = cnt - 1;
     if (std::get<0>(result) == UNDEFINED)
       assert(false);
     str += "\t%";
@@ -1043,12 +1044,24 @@ std::pair<bool, int> LValAST::Output() const {
     str += " = getelemptr @";
     str += ident;
     str += "_";
-    str += std::to_string(cur_block);
+    str += std::to_string(std::get<2>(result));
     str += ", ";
-    if (!size.first)
-      assert(false);
-    str += std::to_string(size.second);
+    if (size.first) {
+      str += std::to_string(size.second);
+    } else {
+      str += "%";
+      str += std::to_string(exp_cnt);
+    }
     str += "\n";
+
+    str += "\t%";
+    str += std::to_string(cnt);
+    cnt++;
+    str += " = load %";
+    // cnt - 2 必为 getelemptr 返回值
+    str += std::to_string(cnt - 2);
+    str += "\n";
+
   } else {
     auto result = fetchSymbol(ident);
     if (std::get<0>(result) == CONSTANT)

@@ -52,9 +52,18 @@ void Visit(const koopa_raw_slice_t& slice) {
   }
 }
 
+int Calculate(const koopa_raw_type_t target) {
+  if (target->tag == KOOPA_RTT_ARRAY)
+    return target->data.array.len * Calculate(target->data.array.base);
+  else
+    return 1;
+  return 0;
+}
+
 // 访问函数
 void Visit(const koopa_raw_function_t& func) {
-  if (func->bbs.len == 0) return;
+  if (func->bbs.len == 0)
+    return;
 
   // 清零函数相关变量
   stack_cnt = 0;
@@ -77,6 +86,12 @@ void Visit(const koopa_raw_function_t& func) {
       // 无返回值语句
       if (inst->ty->tag == KOOPA_RTT_UNIT) {
         cnt--;
+      }
+      if (inst->kind.tag == KOOPA_RVT_ALLOC) {
+        if (inst->ty->tag == KOOPA_RTT_POINTER)
+          cnt += Calculate(inst->ty->data.pointer.base);
+        else
+          assert(false);
       }
       // 记录函数内有无调用
       if (inst->kind.tag == KOOPA_RVT_CALL) {
@@ -120,8 +135,15 @@ void Visit(const koopa_raw_value_t& value) {
       // 访问 integer 指令
       Visit(kind.data.integer);
       break;
-    case KOOPA_RVT_ALLOC:
+    case KOOPA_RVT_ALLOC: {
+      dic[value] = std::to_string(stack_cnt * 4) + "(sp)";
+      stack_cnt++;
+      if (value->ty->tag == KOOPA_RTT_POINTER)
+        stack_cnt += Calculate(value->ty->data.pointer.base);
+      else
+        assert(false);
       break;
+    }
     case KOOPA_RVT_GLOBAL_ALLOC:
       Visit(kind.data.global_alloc, value);
       break;
@@ -132,6 +154,10 @@ void Visit(const koopa_raw_value_t& value) {
     case KOOPA_RVT_STORE:
       // 访问 store 指令
       Visit(kind.data.store);
+      break;
+    case KOOPA_RVT_GET_ELEM_PTR:
+      // 访问 get_elem 指令
+      Visit(kind.data.get_elem_ptr, value);
       break;
     case KOOPA_RVT_BINARY:
       // 访问 binary 指令
@@ -195,28 +221,56 @@ void Visit(const koopa_raw_global_alloc_t& global, const koopa_raw_value_t& valu
   cout << "\t.globl " << label << "\n";
   cout << label << ":\n";
   switch (global.init->kind.tag) {
-  case KOOPA_RVT_ZERO_INIT:
-    cout << "\t.zero 4\n\n";
-    break;
-  case KOOPA_RVT_INTEGER:
-    cout << "\t.word " << global.init->kind.data.integer.value << "\n\n";
-    break;
-  default:
-    cout << "\tTAG: " << global.init->kind.tag << "\n";
-    assert(false);
-    break;
+    case KOOPA_RVT_ZERO_INIT:
+      cout << "\t.zero 4\n\n";
+      break;
+    case KOOPA_RVT_INTEGER:
+      cout << "\t.word " << global.init->kind.data.integer.value << "\n\n";
+      break;
+    case KOOPA_RVT_AGGREGATE: {
+      auto size = global.init->kind.data.aggregate.elems.len;
+      auto buffer = global.init->kind.data.aggregate.elems.buffer;
+      for (auto i = 0; i < size; i++) {
+        auto value = reinterpret_cast<koopa_raw_value_t>(buffer[i])->kind.data.integer.value;
+        cout << "\t.word " << value << "\n";
+      }
+      cout << "\n";
+      break;
+    }
+    default:
+      cout << "\tTAG: " << global.init->kind.tag << "\n";
+      assert(false);
+      break;
   }
   dic[value] = label;
 }
 
 void Visit(const koopa_raw_load_t& load, const koopa_raw_value_t& value) {
-  if (load.src->kind.tag == KOOPA_RVT_GLOBAL_ALLOC) {
-    cout << "\tla t0, " << dic[load.src] << "\n";
-    cout << "\tlw t0, 0(t0)" << "\n";
-  } else {
-    cout << "\tlw t0, " << dic[load.src] << "\n";
+  // if (load.src->kind.tag == KOOPA_RVT_GLOBAL_ALLOC) {
+  //   cout << "\tla t0, " << dic[load.src] << "\n";
+  //   cout << "\tlw t0, 0(t0)"
+  //        << "\n";
+  // } else {
+  //   cout << "\tlw t0, " << dic[load.src] << "\n";
+  // }
+
+  switch (load.src->kind.tag) {
+    case KOOPA_RVT_GLOBAL_ALLOC: {
+      cout << "\tla t0, " << dic[load.src] << "\n";
+      cout << "\tlw t0, 0(t0)\n";
+      break;
+    }
+    case KOOPA_RVT_GET_ELEM_PTR: {
+      cout << "\tlw t0, " << dic[load.src] << "\n";
+      cout << "\tlw t0, 0(t0)\n";
+      break;
+    }
+    default: {
+      cout << "\tlw t0, " << dic[load.src] << "\n";
+      break;
+    }
   }
-  
+
   cout << "\tsw t0, " << stack_cnt * 4 << "(sp)"
        << "\n";
   dic[value] = to_string(stack_cnt * 4) + "(sp)";
@@ -226,22 +280,77 @@ void Visit(const koopa_raw_load_t& load, const koopa_raw_value_t& value) {
 void Visit(const koopa_raw_store_t& store) {
   reg_cnt = 0;
   Search(store.value);
-  if (dic.find(store.dest) == dic.end()) {
-    dic[store.dest] = to_string(stack_cnt * 4) + "(sp)";
-    stack_cnt++;
-  }
+  // if (dic.find(store.dest) == dic.end()) {
+  //   dic[store.dest] = to_string(stack_cnt * 4) + "(sp)";
+  //   stack_cnt++;
+  // }
 
-  if (store.dest->kind.tag == KOOPA_RVT_GLOBAL_ALLOC) {
-    cout << "\tla t" << reg_cnt << ", " << dic[store.dest] << "\n";
-    reg_cnt++;
-    cout << "\tsw " << dic[store.value] << ", " << "0(t" << reg_cnt-1 << ")\n";
-  } else {
-    cout << "\tsw " << dic[store.value] << ", " << dic[store.dest] << "\n";
+  // if (store.dest->kind.tag == KOOPA_RVT_GLOBAL_ALLOC) {
+  //   cout << "\tla t" << reg_cnt << ", " << dic[store.dest] << "\n";
+  //   reg_cnt++;
+  //   cout << "\tsw " << dic[store.value] << ", "
+  //        << "0(t" << reg_cnt - 1 << ")\n";
+  // } else {
+  //   cout << "\tsw " << dic[store.value] << ", " << dic[store.dest] << "\n";
+  // }
+
+  switch (store.dest->kind.tag) {
+    case KOOPA_RVT_GLOBAL_ALLOC: {
+      cout << "\tla t" << reg_cnt << ", " << dic[store.dest] << "\n";
+      reg_cnt++;
+      cout << "\tsw " << dic[store.value] << ", "
+           << "0(t" << reg_cnt - 1 << ")\n";
+      break;
+    }
+    case KOOPA_RVT_GET_ELEM_PTR: {
+      cout << "\tlw t" << reg_cnt << ", " << dic[store.dest] << "\n";
+      reg_cnt++;
+      cout << "\tsw " << dic[store.value] << ", "
+           << "0(t" << reg_cnt - 1 << ")\n";
+      break;
+    }
+    default: {
+      cout << "\tsw " << dic[store.value] << ", " << dic[store.dest] << "\n";
+      break;
+    }
   }
 }
 
 void Visit(const koopa_raw_integer_t& integer) {
   cout << integer.value;
+}
+
+void Visit(const koopa_raw_get_elem_ptr_t& target, const koopa_raw_value_t& value) {
+  reg_cnt = 0;
+  if (target.src->kind.tag == KOOPA_RVT_GLOBAL_ALLOC) {
+    string src_s = dic[target.src];
+    cout << "\tla t0, " << src_s << "\n";
+    cout << "\tli t1, " << target.index->kind.data.integer.value << "\n";
+    cout << "\tli t2, 4"
+         << "\n";
+    cout << "\tmul t1, t1, t2"
+         << "\n";
+    cout << "\tadd t0, t0, t1"
+         << "\n";
+    string label = to_string(stack_cnt * 4) + "(sp)";
+    stack_cnt++;
+    cout << "\tsw t0, " << label << "\n";
+    dic[value] = label;
+  } else {
+    string src_s = dic[target.src];
+    cout << "\taddi t0, sp, " << src_s.substr(0, src_s.size() - 4) << "\n";
+    cout << "\tli t1, " << target.index->kind.data.integer.value << "\n";
+    cout << "\tli t2, 4"
+         << "\n";
+    cout << "\tmul t1, t1, t2"
+         << "\n";
+    cout << "\tadd t0, t0, t1"
+         << "\n";
+    string label = to_string(stack_cnt * 4) + "(sp)";
+    stack_cnt++;
+    cout << "\tsw t0, " << label << "\n";
+    dic[value] = label;
+  }
 }
 
 bool isNum(const koopa_raw_value_t value);
@@ -598,7 +707,7 @@ void Visit(const koopa_raw_call_t& call, const koopa_raw_value_t& value) {
   // 根据ir是否保存返回值决定是否保存a0
   if (value->ty->tag != KOOPA_RTT_UNIT) {
     cout << "\tsw a0, " << stack_cnt * 4 << "(sp)\n";
-    dic[value] = std::to_string(stack_cnt*4) + "(sp)";
+    dic[value] = std::to_string(stack_cnt * 4) + "(sp)";
     stack_cnt++;
   }
 }
