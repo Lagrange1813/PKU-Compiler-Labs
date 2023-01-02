@@ -221,9 +221,13 @@ void Visit(const koopa_raw_global_alloc_t& global, const koopa_raw_value_t& valu
   cout << "\t.globl " << label << "\n";
   cout << label << ":\n";
   switch (global.init->kind.tag) {
-    case KOOPA_RVT_ZERO_INIT:
-      cout << "\t.zero 4\n\n";
+    case KOOPA_RVT_ZERO_INIT: {
+      if (global.init->ty->tag == KOOPA_RTT_ARRAY)
+        cout << "\t.zero " << 4 * global.init->ty->data.array.len << "\n\n";
+      else if (global.init->ty->tag == KOOPA_RTT_INT32)
+        cout << "\t.zero 4\n\n";
       break;
+    }
     case KOOPA_RVT_INTEGER:
       cout << "\t.word " << global.init->kind.data.integer.value << "\n\n";
       break;

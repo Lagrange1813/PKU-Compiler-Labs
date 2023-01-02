@@ -228,15 +228,16 @@ std::pair<bool, int> ConstDeclAST::Output() const {
 void ConstDefAST::Dump() const {
   std::cout << "ConstDefAST { ";
   std::cout << "Ident { " << ident << " } ";
-  if (constExp)
-    (*constExp)->Dump();
+  for (auto& constExp : arrayConstExpList) {
+    constExp->Dump();
+  }
   constInitVal->Dump();
   std::cout << "} ";
 }
 
 std::pair<bool, int> ConstDefAST::Output() const {
-  if (constExp) {
-    auto size = search((ConstExpAST*)constExp->get());
+  if (arrayConstExpList.size() != 0) {
+    auto size = search((ConstExpAST*)arrayConstExpList[0].get());
     auto result = ((ConstInitValWithListAST*)constInitVal.get())->prepare();
     insertSymbol(ident, VARIABLE, 0, UND);
     if (is_global_area) {
@@ -309,8 +310,8 @@ std::pair<bool, int> ConstInitValAST::Output() const {
 
 void ConstInitValWithListAST::Dump() const {
   std::cout << "ConstInitValWithListAST { ";
-  for (auto& constExp : constExpList)
-    constExp->Dump();
+  for (auto& constInitVal : constInitValList)
+    constInitVal->Dump();
   std::cout << "} ";
 }
 
@@ -320,10 +321,10 @@ std::pair<bool, int> ConstInitValWithListAST::Output() const {
 
 std::vector<int> ConstInitValWithListAST::prepare() {
   std::vector<int> vec;
-  for (auto& constExp : constExpList) {
-    auto result = search((ConstExpAST*)constExp.get());
-    vec.push_back(result);
-  }
+  // for (auto& constInitVal : constInitValList) {
+  //   auto result = ((ConstInitValAST*)constInitVal.get())->Output();
+  //   vec.push_back(result.second);
+  // }
   return vec;
 }
 
@@ -346,14 +347,15 @@ std::pair<bool, int> VarDeclAST::Output() const {
 void VarDefAST::Dump() const {
   std::cout << "VarDefAST { ";
   std::cout << "Ident { " << ident << " } ";
-  if (constExp)
-    (*constExp)->Dump();
+  for (auto& constExp : arrayConstExpList) {
+    constExp->Dump();
+  }
   std::cout << "} ";
 }
 
 std::pair<bool, int> VarDefAST::Output() const {
-  if (constExp) {
-    auto size = search((ConstExpAST*)constExp->get());
+  if (arrayConstExpList.size() != 0) {
+    auto size = search((ConstExpAST*)arrayConstExpList[0].get());
     insertSymbol(ident, VARIABLE, 0, UND);
     if (is_global_area) {
       str += "global @";
@@ -394,16 +396,26 @@ std::pair<bool, int> VarDefAST::Output() const {
 
 void VarDefWithAssignAST::Dump() const {
   std::cout << "VarDefWithAssignAST { ";
-  std::cout << "Ident { " << ident << "} ";
-  if (constExp)
-    (*constExp)->Dump();
+  std::cout << "Ident { " << ident << " } ";
+  for (auto& constExp : arrayConstExpList) {
+    constExp->Dump();
+  }
   initVal->Dump();
   std::cout << " } ";
 }
 
+std::vector<int> getSize(const std::vector<std::unique_ptr<BaseAST>> & target) {
+  std::vector<int> ret;
+  for (auto& elem:target) {
+    ret.push_back(search((ConstExpAST*)elem.get()));
+  }
+  return ret;
+}
+
 std::pair<bool, int> VarDefWithAssignAST::Output() const {
-  if (constExp) {
-    auto size = search((ConstExpAST*)constExp->get());
+  if (arrayConstExpList.size() != 0) {
+    auto size = search((ConstExpAST*)arrayConstExpList[0].get());
+    auto sizeList = getSize(arrayConstExpList);
     auto result = ((InitValWithListAST*)initVal.get())->prepare();
     insertSymbol(ident, VARIABLE, 0, UND);
     if (is_global_area) {
@@ -411,9 +423,21 @@ std::pair<bool, int> VarDefWithAssignAST::Output() const {
       str += ident;
       str += "_";
       str += std::to_string(cur_block);
-      str += " = alloc [i32, ";
-      str += std::to_string(size);
-      str += "], {";
+      str += " = alloc ";
+      
+      // 生成 alloc 参数
+      auto len = sizeList.size();
+      for (int i = len-1; i >= 0; i--) {
+        str += "[";
+      }
+      str += "i32";
+      for (int i = len-1; i >= 0; i--) {
+        str += ", ";
+        str += std::to_string(sizeList[i]);
+        str += "]";
+      }
+
+      str += ", {";
       for (int i = 0; i < size; i++) {
         if (i < result.size()) {
           if (!result[i].first)
@@ -431,9 +455,20 @@ std::pair<bool, int> VarDefWithAssignAST::Output() const {
       str += ident;
       str += "_";
       str += std::to_string(cur_block);
-      str += " = alloc [i32, ";
-      str += std::to_string(size);
-      str += "]\n";
+      str += " = alloc ";
+      
+      // 生成 alloc 参数
+      auto len = sizeList.size();
+      for (int i = len-1; i >= 0; i--) {
+        str += "[";
+      }
+      str += "i32";
+      for (int i = len-1; i >= 0; i--) {
+        str += ", ";
+        str += std::to_string(sizeList[i]);
+        str += "]";
+      }
+      str += "\n";
 
       for (int i = 0; i < size; i++) {
         str += "\t%";
@@ -522,8 +557,8 @@ std::pair<bool, int> InitValAST::Output() const {
 
 void InitValWithListAST::Dump() const {
   std::cout << "InitValWithListAST { ";
-  for (auto& exp : expList)
-    exp->Dump();
+  for (auto& initVal : initValList)
+    initVal->Dump();
   std::cout << "} ";
 }
 
@@ -533,16 +568,20 @@ std::pair<bool, int> InitValWithListAST::Output() const {
 
 std::vector<std::pair<bool, int>> InitValWithListAST::prepare() {
   std::vector<std::pair<bool, int>> vec;
-  for (auto& exp : expList) {
-    auto result = exp->Output();
-    int cur = cnt - 1;
-    if (result.first) {
-      vec.push_back(std::make_pair(true, result.second));
-    } else {
-      vec.push_back(std::make_pair(false, cur));
-    }
-  }
+  // for (auto& exp : expList) {
+  //   auto result = exp->Output();
+  //   int cur = cnt - 1;
+  //   if (result.first) {
+  //     vec.push_back(std::make_pair(true, result.second));
+  //   } else {
+  //     vec.push_back(std::make_pair(false, cur));
+  //   }
+  // }
   return vec;
+}
+
+void InitValWithListAST::Test() {
+
 }
 
 void FuncDefAST::Dump() const {
@@ -1025,16 +1064,17 @@ std::pair<bool, int> ExpAST::Output() const {
 
 void LValAST::Dump() const {
   std::cout << "LValAST { ";
-  std::cout << ident;
-  if (exp)
-    (*exp)->Dump();
+  std::cout << "Ident { " << ident << " } ";
+  for (auto& exp : arrayExpList) {
+    exp->Dump();
+  }
   std::cout << " } ";
 }
 
 std::pair<bool, int> LValAST::Output() const {
-  if (exp) {
+  if (arrayExpList.size() != 0) {
     auto result = fetchSymbol(ident);
-    auto size = (*exp)->Output();
+    auto size = (arrayExpList[0])->Output();
     int exp_cnt = cnt - 1;
     if (std::get<0>(result) == UNDEFINED)
       assert(false);
