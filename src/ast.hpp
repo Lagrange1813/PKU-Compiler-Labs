@@ -5,6 +5,8 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <iterator>
+#include <algorithm>
 #include "koopa.h"
 
 extern std::string str;
@@ -95,7 +97,7 @@ class ConstInitValWithListAST : public BaseAST {
 
   void Dump() const override;
   std::pair<bool, int> Output() const override;
-  std::vector<int> prepare();
+  std::vector<int> prepare(std::vector<int>& sizeList, int level);
 };
 
 class VarDeclAST : public BaseAST {
