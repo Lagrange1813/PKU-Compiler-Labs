@@ -245,7 +245,6 @@ void ConstDefAST::Dump() const {
 
 std::pair<bool, int> ConstDefAST::Output() const {
   if (arrayConstExpList.size() != 0) {
-    auto size = search((ConstExpAST*)arrayConstExpList[0].get());
     auto sizeList = getSize(arrayConstExpList);
     auto values = ((ConstInitValWithListAST*)constInitVal.get())->prepare(sizeList, 0);
 
@@ -320,57 +319,79 @@ std::pair<bool, int> ConstDefAST::Output() const {
       }
       str += "\n";
 
-      std::vector<int> intervals;
-      int inter = 1;
-      // 生成间隔数组
-      for (int i = sizeList.size() - 1; i >= 0; i--) {
-        inter *= sizeList[i];
-        intervals.push_back(inter);
-      }
-      std::reverse(intervals.begin(), intervals.end());
-      std::vector current(sizeList.size() - 1, 0);
-      for (int i = 0; i < values.size(); i++) {
-        for (int j = 1; j < intervals.size(); j++) {
-          if (i % intervals[j] == 0) {
-            if (j == 1) {
-              str += "\t%";
-              str += std::to_string(cnt);
-              current[j-1] = cnt;
-              cnt++;
-              str += " = getelemptr @";
-              str += ident;
-              str += "_";
-              str += std::to_string(cur_block);
-              str += ", ";
-              str += std::to_string(i / intervals[j]);
-              str += "\n";
-            } else {
-              str += "\t%";
-              str += std::to_string(cnt);
-              current[j-1] = cnt;
-              cnt++;
-              str += " = getelemptr %";
-              str += std::to_string(current[j-2]);
-              str += ", ";
-              str += std::to_string((i / intervals[j]) % sizeList[j - 1]);
-              str += "\n";
+      if (sizeList.size() > 1) {
+        std::vector<int> intervals;
+        int inter = 1;
+        // 生成间隔数组
+        for (int i = sizeList.size() - 1; i >= 0; i--) {
+          inter *= sizeList[i];
+          intervals.push_back(inter);
+        }
+        std::reverse(intervals.begin(), intervals.end());
+        std::vector current(sizeList.size() - 1, 0);
+        for (int i = 0; i < values.size(); i++) {
+          for (int j = 1; j < intervals.size(); j++) {
+            if (i % intervals[j] == 0) {
+              if (j == 1) {
+                str += "\t%";
+                str += std::to_string(cnt);
+                current[j - 1] = cnt;
+                cnt++;
+                str += " = getelemptr @";
+                str += ident;
+                str += "_";
+                str += std::to_string(cur_block);
+                str += ", ";
+                str += std::to_string(i / intervals[j]);
+                str += "\n";
+              } else {
+                str += "\t%";
+                str += std::to_string(cnt);
+                current[j - 1] = cnt;
+                cnt++;
+                str += " = getelemptr %";
+                str += std::to_string(current[j - 2]);
+                str += ", ";
+                str += std::to_string((i / intervals[j]) % sizeList[j - 1]);
+                str += "\n";
+              }
             }
           }
-        }
-        str += "\t%";
-        str += std::to_string(cnt);
-        cnt++;
-        str += " = getelemptr %";
-        str += std::to_string(current.back());
-        str += ", ";
-        str += std::to_string(i % intervals.back());
-        str += "\n";
+          str += "\t%";
+          str += std::to_string(cnt);
+          cnt++;
+          str += " = getelemptr %";
+          str += std::to_string(current.back());
+          str += ", ";
+          str += std::to_string(i % intervals.back());
+          str += "\n";
 
-        str += "\tstore ";
-        str += std::to_string(values[i]);
-        str += ", %";
-        str += std::to_string(cnt - 1);
-        str += "\n";
+          str += "\tstore ";
+          str += std::to_string(values[i]);
+          str += ", %";
+          str += std::to_string(cnt - 1);
+          str += "\n";
+        }
+      } else {
+        // 一维数组
+        for (int i = 0; i < values.size(); i++) {
+          str += "\t%";
+          str += std::to_string(cnt);
+          cnt++;
+          str += " = getelemptr @";
+          str += ident;
+          str += "_";
+          str += std::to_string(cur_block);
+          str += ", ";
+          str += std::to_string(i);
+          str += "\n";
+
+          str += "\tstore ";
+          str += std::to_string(values[i]);
+          str += ", %";
+          str += std::to_string(cnt - 1);
+          str += "\n";
+        }
       }
     }
   } else {
@@ -475,24 +496,47 @@ void VarDefAST::Dump() const {
 
 std::pair<bool, int> VarDefAST::Output() const {
   if (arrayConstExpList.size() != 0) {
-    auto size = search((ConstExpAST*)arrayConstExpList[0].get());
+    auto sizeList = getSize(arrayConstExpList);
     insertSymbol(ident, VARIABLE, 0, UND);
     if (is_global_area) {
       str += "global @";
       str += ident;
       str += "_";
       str += std::to_string(cur_block);
-      str += " = alloc [i32, ";
-      str += std::to_string(size);
-      str += "], zeroinit\n\n";
+      str += " = alloc ";
+
+      // 生成 alloc 参数
+      auto len = sizeList.size();
+      for (int i = len - 1; i >= 0; i--) {
+        str += "[";
+      }
+      str += "i32";
+      for (int i = len - 1; i >= 0; i--) {
+        str += ", ";
+        str += std::to_string(sizeList[i]);
+        str += "]";
+      }
+
+      str += ", zeroinit\n\n";
     } else {
       str += "\t@";
       str += ident;
       str += "_";
       str += std::to_string(cur_block);
-      str += " = alloc [i32, ";
-      str += std::to_string(size);
-      str += "]\n";
+      str += " = alloc ";
+
+      // 生成 alloc 参数
+      auto len = sizeList.size();
+      for (int i = len - 1; i >= 0; i--) {
+        str += "[";
+      }
+      str += "i32";
+      for (int i = len - 1; i >= 0; i--) {
+        str += ", ";
+        str += std::to_string(sizeList[i]);
+        str += "]";
+      }
+      str += "\n";
     }
   } else {
     if (is_global_area) {
@@ -526,9 +570,9 @@ void VarDefWithAssignAST::Dump() const {
 
 std::pair<bool, int> VarDefWithAssignAST::Output() const {
   if (arrayConstExpList.size() != 0) {
-    auto size = search((ConstExpAST*)arrayConstExpList[0].get());
     auto sizeList = getSize(arrayConstExpList);
-    auto result = ((InitValWithListAST*)initVal.get())->prepare();
+    auto values = ((InitValWithListAST*)initVal.get())->prepare(sizeList, 0);
+
     insertSymbol(ident, VARIABLE, 0, UND);
     if (is_global_area) {
       str += "global @";
@@ -549,19 +593,29 @@ std::pair<bool, int> VarDefWithAssignAST::Output() const {
         str += "]";
       }
 
-      str += ", {";
-      for (int i = 0; i < size; i++) {
-        if (i < result.size()) {
-          if (!result[i].first)
-            assert(false);
-          str += std::to_string(result[i].second);
-        } else {
-          str += "0";
+      str += ", ";
+      std::vector<int> intervals;
+      int inter = 1;
+      for (int i = sizeList.size() - 1; i >= 0; i--) {
+        inter *= sizeList[i];
+        intervals.push_back(inter);
+      }
+      for (int i = 0; i < values.size(); i++) {
+        for (auto interval : intervals) {
+          if (i % interval == 0)
+            str += "{";
         }
-        if (i != size - 1)
+        if (!values[i].first)
+          assert(false);
+        str += std::to_string(values[i].second);
+        for (auto interval : intervals) {
+          if (i % interval == interval - 1)
+            str += "}";
+        }
+        if (i != values.size() - 1)
           str += ", ";
       }
-      str += "}\n\n";
+      str += "\n\n";
     } else {
       str += "\t@";
       str += ident;
@@ -582,34 +636,87 @@ std::pair<bool, int> VarDefWithAssignAST::Output() const {
       }
       str += "\n";
 
-      for (int i = 0; i < size; i++) {
-        str += "\t%";
-        str += std::to_string(cnt);
-        cnt++;
-        str += " = getelemptr @";
-        str += ident;
-        str += "_";
-        str += std::to_string(cur_block);
-        str += ", ";
-        str += std::to_string(i);
-        str += "\n";
+      if (sizeList.size() > 1) {
+        std::vector<int> intervals;
+        int inter = 1;
+        // 生成间隔数组
+        for (int i = sizeList.size() - 1; i >= 0; i--) {
+          inter *= sizeList[i];
+          intervals.push_back(inter);
+        }
+        std::reverse(intervals.begin(), intervals.end());
+        std::vector current(sizeList.size() - 1, 0);
+        for (int i = 0; i < values.size(); i++) {
+          for (int j = 1; j < intervals.size(); j++) {
+            if (i % intervals[j] == 0) {
+              if (j == 1) {
+                str += "\t%";
+                str += std::to_string(cnt);
+                current[j - 1] = cnt;
+                cnt++;
+                str += " = getelemptr @";
+                str += ident;
+                str += "_";
+                str += std::to_string(cur_block);
+                str += ", ";
+                str += std::to_string(i / intervals[j]);
+                str += "\n";
+              } else {
+                str += "\t%";
+                str += std::to_string(cnt);
+                current[j - 1] = cnt;
+                cnt++;
+                str += " = getelemptr %";
+                str += std::to_string(current[j - 2]);
+                str += ", ";
+                str += std::to_string((i / intervals[j]) % sizeList[j - 1]);
+                str += "\n";
+              }
+            }
+          }
+          str += "\t%";
+          str += std::to_string(cnt);
+          cnt++;
+          str += " = getelemptr %";
+          str += std::to_string(current.back());
+          str += ", ";
+          str += std::to_string(i % intervals.back());
+          str += "\n";
 
-        str += "\tstore ";
+          str += "\tstore ";
+          if (values[i].first)
+            str += std::to_string(values[i].second);
+          else
+            str += "%" + std::to_string(values[i].second);
+          str += ", %";
+          str += std::to_string(cnt - 1);
+          str += "\n";
+        }
+      } else {
+        // 一维数组
+        for (int i = 0; i < values.size(); i++) {
+          str += "\t%";
+          str += std::to_string(cnt);
+          cnt++;
+          str += " = getelemptr @";
+          str += ident;
+          str += "_";
+          str += std::to_string(cur_block);
+          str += ", ";
+          str += std::to_string(i);
+          str += "\n";
 
-        if (i < result.size()) {
-          if (result[i].first) {
-            str += std::to_string(result[i].second);
+          str += "\tstore ";
+          if (values[i].first) {
+            str += std::to_string(values[i].second);
           } else {
             str += "%";
-            str += std::to_string(result[i].second);
+            str += std::to_string(values[i].second);
           }
-        } else {
-          str += "0";
+          str += ", %";
+          str += std::to_string(cnt - 1);
+          str += "\n";
         }
-
-        str += ", %";
-        str += std::to_string(cnt - 1);
-        str += "\n";
       }
     }
   } else {
@@ -678,21 +785,53 @@ std::pair<bool, int> InitValWithListAST::Output() const {
   return std::make_pair(false, 0);
 }
 
-std::vector<std::pair<bool, int>> InitValWithListAST::prepare() {
+std::vector<std::pair<bool, int>> InitValWithListAST::prepare(std::vector<int>& sizeList, int level) {
   std::vector<std::pair<bool, int>> vec;
-  // for (auto& exp : expList) {
-  //   auto result = exp->Output();
-  //   int cur = cnt - 1;
-  //   if (result.first) {
-  //     vec.push_back(std::make_pair(true, result.second));
-  //   } else {
-  //     vec.push_back(std::make_pair(false, cur));
-  //   }
-  // }
-  return vec;
-}
+  // 记录填入整数的数量
+  int num_cnt = 0;
 
-void InitValWithListAST::Test() {
+  int total = 1;
+  for (int i = level; i < sizeList.size(); i++) {
+    total *= sizeList[i];
+  }
+
+  int lastSize = sizeList.back();
+  for (auto& initVal : initValList) {
+    auto targetInitVal = initVal.get();
+    if (typeid(*targetInitVal) == typeid(InitValAST)) {
+      auto result = ((InitValAST*)initVal.get())->Output();
+      if (result.first)
+        vec.push_back(result);
+      else
+        vec.push_back(std::make_pair(false, cnt - 1));
+      num_cnt++;
+    } else if (typeid(*targetInitVal) == typeid(InitValWithListAST)) {
+      if (vec.size() % lastSize)
+        assert(false);
+
+      int targetLevel = level;
+      if (vec.size() == 0) {
+        targetLevel += 1;
+      } else {
+        int comp = sizeList.back();
+        int i = sizeList.size() - 1;
+        while (comp <= vec.size()) {
+          comp *= sizeList[i - 1];
+          i--;
+        }
+        targetLevel = i + 1;
+      }
+
+      auto ret = ((InitValWithListAST*)initVal.get())->prepare(sizeList, targetLevel);
+      vec.insert(vec.end(), ret.begin(), ret.end());
+      num_cnt += ret.size();
+    }
+  }
+
+  for (int i = num_cnt; i < total; i++)
+    vec.push_back(std::make_pair(true, 0));
+
+  return vec;
 }
 
 void FuncDefAST::Dump() const {

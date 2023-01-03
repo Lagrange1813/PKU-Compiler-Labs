@@ -142,8 +142,7 @@ class InitValWithListAST : public BaseAST {
 
   void Dump() const override;
   std::pair<bool, int> Output() const override;
-  std::vector<std::pair<bool, int>> prepare();
-  void Test();
+  std::vector<std::pair<bool, int>> prepare(std::vector<int>& sizeList, int level);
 };
 
 class FuncDefAST : public BaseAST {
