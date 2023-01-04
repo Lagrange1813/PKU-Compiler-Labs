@@ -346,6 +346,17 @@ FuncFParam
     ast->ident = *unique_ptr<string>($2);
     $$ = ast;
   }
+  | INT IDENT '[' ']' ArrayConstExpList {
+    auto ast = new FuncFParamAST();
+    string * type = new string("int");
+    ast->bType = *unique_ptr<string>(type);
+    ast->ident = *unique_ptr<string>($2);
+    ast->isArray = true;
+    vector<unique_ptr<BaseAST> > *vec = ($5);
+    for (auto it = vec->begin(); it != vec->end(); it++)
+      ast->arrayConstExpList.push_back(move(*it));
+    $$ = ast;
+  }
   ;
 
 Block

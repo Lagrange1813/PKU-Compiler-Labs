@@ -170,6 +170,8 @@ class FuncFParamAST : public BaseAST {
  public:
   std::string bType;
   std::string ident;
+  bool isArray = false;
+  std::vector<std::unique_ptr<BaseAST>> arrayConstExpList;
 
   void Dump() const override;
   std::pair<bool, int> Output() const override;
@@ -279,6 +281,8 @@ class LValAST : public BaseAST {
   std::vector<std::unique_ptr<BaseAST>> arrayExpList;
 
   void Dump() const override;
+  std::vector<std::pair<bool, int>> prepare() const;
+  int getLocation() const;
   std::pair<bool, int> Output() const override;
 };
 
