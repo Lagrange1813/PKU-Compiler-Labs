@@ -1,4 +1,5 @@
 #include <iostream>
+#include <string>
 #include <unordered_map>
 
 #include "visit.hpp"
@@ -6,11 +7,32 @@
 using namespace std;
 
 typedef enum {
+  REGISTER,
+  STACK
+} loca_type;
 
+typedef struct {
+  loca_type type;
+  string reg_name;
+  int stack;
+} loca_object;
+
+unordered_map<koopa_raw_value_t, loca_object*> lookup;
+
+void saveLocation(koopa_raw_value_t value, loca_type type, string reg_name, int stack) {
+  loca_object* target = new loca_object();
+  if (type == REGISTER) {
+    target->type = REGISTER;
+    target->reg_name = reg_name;
+  } else if (type == STACK) {
+    target->type = STACK;
+    target->stack = stack;
+  } else {
+    assert(false);
+  }
+  lookup[value] = target;
 }
 
-
-unordered_map<koopa_raw_value_t, string> dic;
 // 记录函数所用栈空间
 int stack_space = 0;
 // 栈局部变量计数器
@@ -117,7 +139,8 @@ void Visit(const koopa_raw_function_t& func) {
       cout << "\taddi sp, sp, " << -stack_space << "\n";
     } else {
       cout << "\tli t0, " << -stack_space << "\n";
-      cout << "\tadd sp, sp, t0" << "\n";
+      cout << "\tadd sp, sp, t0"
+           << "\n";
     }
   }
 
@@ -126,10 +149,11 @@ void Visit(const koopa_raw_function_t& func) {
       cout << "\tsw ra, " << stack_space - 4 << "(sp)\n";
     } else {
       cout << "\tli t0, " << stack_space - 4 << "\n";
-      cout << "\tsw ra, t0(sp)\n";
+      cout << "\tadd t0, t0, sp\n";
+      cout << "\tsw ra, 0(t0)\n";
     }
   }
-    // cout << "\tsw ra, " << stack_space - 4 << "(sp)\n";
+  // cout << "\tsw ra, " << stack_space - 4 << "(sp)\n";
 
   // 访问所有基本块
   Visit(func->bbs);
@@ -154,7 +178,8 @@ void Visit(const koopa_raw_value_t& value) {
       Visit(kind.data.integer);
       break;
     case KOOPA_RVT_ALLOC: {
-      dic[value] = std::to_string(stack_cnt * 4) + "(sp)";
+      // dic[value] = std::to_string(stack_cnt * 4) + "(sp)";
+      saveLocation(value, STACK, "", stack_cnt * 4);
       stack_cnt++;
       if (value->ty->tag == KOOPA_RTT_POINTER)
         stack_cnt += Calculate(value->ty->data.pointer.base);
@@ -213,21 +238,32 @@ void Search(const koopa_raw_value_t value) {
     Visit(value->kind.data.integer);
     cout << "\n";
 
-    dic[value] = "t" + to_string(reg_cnt);
+    // dic[value] = "t" + to_string(reg_cnt);
+    saveLocation(value, REGISTER, "t" + to_string(reg_cnt), 0);
+
     reg_cnt++;
   } else if (value->kind.tag == KOOPA_RVT_INTEGER && value->kind.data.integer.value == 0) {
-    dic[value] = "x0";
+    // dic[value] = "x0";
+    saveLocation(value, REGISTER, "x0", 0);
   } else if (value->kind.tag == KOOPA_RVT_ALLOC || value->kind.tag == KOOPA_RVT_LOAD || value->kind.tag == KOOPA_RVT_BINARY || value->kind.tag == KOOPA_RVT_CALL) {
-    cout << "\tlw t" << reg_cnt << ", " << dic[value] << "\n";
-    dic[value] = "t" + to_string(reg_cnt);
+    int loca = lookup[value]->stack;
+    if (loca < 2048 && loca >= -2048) {
+      cout << "\tlw t" << reg_cnt << ", " << loca << "(sp)\n";
+    } else {
+      cout << "\tli t1, " << loca << "\n";
+      cout << "\tadd t1, t1, sp\n";
+      cout << "\tlw t0, 0(t1)\n";
+    }
+    saveLocation(value, REGISTER, "t" + to_string(reg_cnt), 0);
     reg_cnt++;
   } else if (value->kind.tag == KOOPA_RVT_FUNC_ARG_REF) {
+    // assert(false);
     size_t index = value->kind.data.func_arg_ref.index;
     if (index < 8) {
-      dic[value] = "a" + to_string(index);
+      saveLocation(value, REGISTER, "a" + to_string(index), 0);
     } else {
       cout << "\tlw t0, " << stack_space + (index - 8) * 4 << "(sp)\n";
-      dic[value] = "t0";
+      saveLocation(value, REGISTER, "t0", 0);
     }
   }
 }
@@ -264,7 +300,8 @@ void Visit(const koopa_raw_global_alloc_t& global, const koopa_raw_value_t& valu
       assert(false);
       break;
   }
-  dic[value] = label;
+  // dic[value] = label;
+  saveLocation(value, REGISTER, label, 0);
 }
 
 void Visit(const koopa_raw_load_t& load, const koopa_raw_value_t& value) {
@@ -278,24 +315,60 @@ void Visit(const koopa_raw_load_t& load, const koopa_raw_value_t& value) {
 
   switch (load.src->kind.tag) {
     case KOOPA_RVT_GLOBAL_ALLOC: {
-      cout << "\tla t0, " << dic[load.src] << "\n";
+      // cout << "\tla t0, " << dic[load.src] << "\n";
+      cout << "\tla t0, " << lookup[load.src]->reg_name << "\n";
       cout << "\tlw t0, 0(t0)\n";
       break;
     }
     case KOOPA_RVT_GET_ELEM_PTR: {
-      cout << "\tlw t0, " << dic[load.src] << "\n";
+      auto target = lookup[load.src];
+      if (target->type == STACK) {
+        if (target->stack < 2048 && target->stack >= -2048) {
+          cout << "\tlw t0, " << lookup[load.src]->stack << "(sp)\n";
+        } else {
+          cout << "\tli t0, " << lookup[load.src]->stack << "\n";
+          cout << "\tadd t0, t0, sp\n";
+          cout << "\tlw t0, 0(t0)\n";
+        }
+      } else {
+        assert(false);
+        cout << "\tlw t0, " << lookup[load.src]->reg_name << "\n";
+      }
+
       cout << "\tlw t0, 0(t0)\n";
       break;
     }
     default: {
-      cout << "\tlw t0, " << dic[load.src] << "\n";
+      // cout << "\tlw t0, " << dic[load.src] << "\n";
+      auto target = lookup[load.src];
+      if (target->type == STACK) {
+        if (target->stack < 2048 && target->stack >= -2048) {
+          cout << "\tlw t0, " << target->stack << "(sp)\n";
+        } else {
+          cout << "\tli t0, " << target->stack << "\n";
+          cout << "\tadd t0, t0, sp\n";
+          cout << "\tlw t0, 0(t0)\n";
+        }
+      } else {
+        assert(false);
+        cout << "\tlw t0, " << lookup[load.src]->reg_name << "\n";
+      }
       break;
     }
   }
 
-  cout << "\tsw t0, " << stack_cnt * 4 << "(sp)"
-       << "\n";
-  dic[value] = to_string(stack_cnt * 4) + "(sp)";
+  int target = stack_cnt * 4;
+  if (target < 2048 && target >= -2048) {
+    cout << "\tsw t0, " << target << "(sp)"
+         << "\n";
+  } else {
+    cout << "\tli t1, " << target << "\n";
+    cout << "\tadd t1, t1, sp\n";
+    cout << "\tsw t0, 0(t1)\n";
+  }
+
+  // dic[value] = to_string(stack_cnt * 4) + "(sp)";
+  saveLocation(value, STACK, "", stack_cnt * 4);
   stack_cnt++;
 }
 
@@ -318,21 +391,49 @@ void Visit(const koopa_raw_store_t& store) {
 
   switch (store.dest->kind.tag) {
     case KOOPA_RVT_GLOBAL_ALLOC: {
-      cout << "\tla t" << reg_cnt << ", " << dic[store.dest] << "\n";
+      cout << "\tla t" << reg_cnt << ", " << lookup[store.dest]->reg_name << "\n";
       reg_cnt++;
-      cout << "\tsw " << dic[store.value] << ", "
+      cout << "\tsw " << lookup[store.value]->reg_name << ", "
            << "0(t" << reg_cnt - 1 << ")\n";
       break;
     }
     case KOOPA_RVT_GET_ELEM_PTR: {
-      cout << "\tlw t" << reg_cnt << ", " << dic[store.dest] << "\n";
-      reg_cnt++;
-      cout << "\tsw " << dic[store.value] << ", "
+      auto target = lookup[store.dest];
+      if (target->type == STACK) {
+        if (target->stack < 2048 && target->stack >= -2048) {
+          cout << "\tlw t" << reg_cnt << ", " << target->stack << "(sp)\n";
+          reg_cnt++;
+        } else {
+          cout << "\tli t" << reg_cnt << ", " << target->stack << "\n";
+          reg_cnt++;
+          cout << "\tadd t" << reg_cnt << ", t" << reg_cnt << ", sp\n";
+          cout << "\tlw t" << reg_cnt << ", 0(t" << reg_cnt - 1 << ")\n";
+          reg_cnt++;
+        }
+      } else {
+        assert(false);
+        cout << "\tlw t0, " << target->reg_name << "\n";
+      }
+
+      cout << "\tsw " << lookup[store.value]->reg_name << ", "
            << "0(t" << reg_cnt - 1 << ")\n";
+
       break;
     }
     default: {
-      cout << "\tsw " << dic[store.value] << ", " << dic[store.dest] << "\n";
+      auto target = lookup[store.dest];
+      if (target->type == STACK) {
+        if (target->stack < 2048 && target->stack >= -2048) {
+          cout << "\tsw " << lookup[store.value]->reg_name << ", " << target->stack << "(sp)\n";
+        } else {
+          cout << "\tli t" << reg_cnt << ", " << target->stack << "\n";
+          cout << "\tadd t" << reg_cnt << ", t" << reg_cnt << ", sp\n";
+          reg_cnt++;
+          cout << "\tsw " << lookup[store.value]->reg_name << ", 0(t" << reg_cnt - 1 << ")\n";
+        }
+      } else {
+        assert(false);
+      }
       break;
     }
   }
@@ -345,8 +446,7 @@ void Visit(const koopa_raw_integer_t& integer) {
 void Visit(const koopa_raw_get_ptr_t& target, const koopa_raw_value_t& value) {
   reg_cnt = 0;
   if (target.src->kind.tag == KOOPA_RVT_GLOBAL_ALLOC) {
-    string src_s = dic[target.src];
-    cout << "\tla t0, " << src_s << "\n";
+    cout << "\tla t0, " << lookup[target.src]->reg_name << "\n";
     cout << "\tli t1, " << target.index->kind.data.integer.value << "\n";
     cout << "\tli t2, 4"
          << "\n";
@@ -354,13 +454,25 @@ void Visit(const koopa_raw_get_ptr_t& target, const koopa_raw_value_t& value) {
          << "\n";
     cout << "\tadd t0, t0, t1"
          << "\n";
-    string label = to_string(stack_cnt * 4) + "(sp)";
+
+    int size = stack_cnt * 4;
     stack_cnt++;
-    cout << "\tsw t0, " << label << "\n";
-    dic[value] = label;
+    if (size < 2048 && size >= -2048) {
+      cout << "\tsw t0, " << size << "(sp)\n";
+    } else {
+      cout << "\tli t1, " << size << "\n";
+      cout << "\tadd t1, t1, sp\n";
+      cout << "\tsw t0, 0(t1)\n";
+    }
+    saveLocation(value, STACK, "", size);
   } else {
-    string src_s = dic[target.src];
-    cout << "\taddi t0, sp, " << src_s.substr(0, src_s.size() - 4) << "\n";
+    int size = lookup[target.src]->stack;
+    if (size < 2048 && size >= -2048) {
+      cout << "\taddi t0, sp, " << size << "\n";
+    } else {
+      cout << "\tli t1, " << size << "\n";
+      cout << "\taddi t0, sp, t1\n";
+    }
     cout << "\tli t1, " << target.index->kind.data.integer.value << "\n";
     cout << "\tli t2, 4"
          << "\n";
@@ -368,18 +480,23 @@ void Visit(const koopa_raw_get_ptr_t& target, const koopa_raw_value_t& value) {
          << "\n";
     cout << "\tadd t0, t0, t1"
          << "\n";
-    string label = to_string(stack_cnt * 4) + "(sp)";
+    int loca = stack_cnt * 4;
     stack_cnt++;
-    cout << "\tsw t0, " << label << "\n";
-    dic[value] = label;
+    if (loca < 2048 && loca >= -2048) {
+      cout << "\tsw t0, " << loca << "(sp)\n";
+    } else {
+      cout << "\tli t1, " << loca << "\n";
+      cout << "\tadd t1, t1, sp\n";
+      cout << "\tsw t0, 0(t1)\n";
+    }
+    saveLocation(value, STACK, "", loca);
   }
 }
 
 void Visit(const koopa_raw_get_elem_ptr_t& target, const koopa_raw_value_t& value) {
   reg_cnt = 0;
   if (target.src->kind.tag == KOOPA_RVT_GLOBAL_ALLOC) {
-    string src_s = dic[target.src];
-    cout << "\tla t0, " << src_s << "\n";
+    cout << "\tla t0, " << lookup[target.src]->reg_name << "\n";
     cout << "\tli t1, " << target.index->kind.data.integer.value << "\n";
     cout << "\tli t2, 4"
          << "\n";
@@ -387,13 +504,25 @@ void Visit(const koopa_raw_get_elem_ptr_t& target, const koopa_raw_value_t& valu
          << "\n";
     cout << "\tadd t0, t0, t1"
          << "\n";
-    string label = to_string(stack_cnt * 4) + "(sp)";
+
+    int size = stack_cnt * 4;
     stack_cnt++;
-    cout << "\tsw t0, " << label << "\n";
-    dic[value] = label;
+    if (size < 2048 && size >= -2048) {
+      cout << "\tsw t0, " << size << "(sp)\n";
+    } else {
+      cout << "\tli t1, " << size << "\n";
+      cout << "\tadd t1, t1, sp\n";
+      cout << "\tsw t0, 0(t1)\n";
+    }
+    saveLocation(value, STACK, "", size);
   } else {
-    string src_s = dic[target.src];
-    cout << "\taddi t0, sp, " << src_s.substr(0, src_s.size() - 4) << "\n";
+    int size = lookup[target.src]->stack;
+    if (size < 2048 && size >= -2048) {
+      cout << "\taddi t0, sp, " << size << "\n";
+    } else {
+      cout << "\tli t1, " << size << "\n";
+      cout << "\taddi t0, sp, t1\n";
+    }
     cout << "\tli t1, " << target.index->kind.data.integer.value << "\n";
     cout << "\tli t2, 4"
          << "\n";
@@ -401,10 +530,16 @@ void Visit(const koopa_raw_get_elem_ptr_t& target, const koopa_raw_value_t& valu
          << "\n";
     cout << "\tadd t0, t0, t1"
          << "\n";
-    string label = to_string(stack_cnt * 4) + "(sp)";
+    int loca = stack_cnt * 4;
     stack_cnt++;
-    cout << "\tsw t0, " << label << "\n";
-    dic[value] = label;
+    if (loca < 2048 && loca >= -2048) {
+      cout << "\tsw t0, " << loca << "(sp)\n";
+    } else {
+      cout << "\tli t1, " << loca << "\n";
+      cout << "\tadd t1, t1, sp\n";
+      cout << "\tsw t0, 0(t1)\n";
+    }
+    saveLocation(value, STACK, "", loca);
   }
 }
 
@@ -420,14 +555,21 @@ void Visit(const koopa_raw_binary_t& binary, const koopa_raw_value_t& value) {
       Search(binary.rhs);
 
       cout << "\txor t0"
-           << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
+           << ", " << lookup[binary.lhs]->reg_name << ", " << lookup[binary.rhs]->reg_name << "\n";
       cout << "\tsnez t0"
            << ", t0"
            << "\n";
-      cout << "\tsw t0, " << stack_cnt * 4 << "(sp)"
-           << "\n";
 
-      dic[value] = to_string(stack_cnt * 4) + "(sp)";
+      int loca = stack_cnt * 4;
+      if (loca < 2048 && loca >= -2048) {
+        cout << "\tsw t0, " << loca << "(sp)\n";
+      } else {
+        cout << "\tli t1, " << loca << "\n";
+        cout << "\tadd t1, t1, sp\n";
+        cout << "\tsw t0, 0(t1)\n";
+      }
+
+      saveLocation(value, STACK, "", loca);
       stack_cnt++;
 
       break;
@@ -441,14 +583,21 @@ void Visit(const koopa_raw_binary_t& binary, const koopa_raw_value_t& value) {
       Search(binary.rhs);
 
       cout << "\txor t0"
-           << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
+           << ", " << lookup[binary.lhs]->reg_name << ", " << lookup[binary.rhs]->reg_name << "\n";
       cout << "\tseqz t0"
            << ", t0"
            << "\n";
-      cout << "\tsw t0, " << stack_cnt * 4 << "(sp)"
-           << "\n";
 
-      dic[value] = to_string(stack_cnt * 4) + "(sp)";
+      int loca = stack_cnt * 4;
+      if (loca < 2048 && loca >= -2048) {
+        cout << "\tsw t0, " << loca << "(sp)\n";
+      } else {
+        cout << "\tli t1, " << loca << "\n";
+        cout << "\tadd t1, t1, sp\n";
+        cout << "\tsw t0, 0(t1)\n";
+      }
+
+      saveLocation(value, STACK, "", loca);
       stack_cnt++;
 
       break;
@@ -462,11 +611,18 @@ void Visit(const koopa_raw_binary_t& binary, const koopa_raw_value_t& value) {
       Search(binary.rhs);
 
       cout << "\tsgt t0"
-           << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
-      cout << "\tsw t0, " << stack_cnt * 4 << "(sp)"
-           << "\n";
+           << ", " << lookup[binary.lhs]->reg_name << ", " << lookup[binary.rhs]->reg_name << "\n";
 
-      dic[value] = to_string(stack_cnt * 4) + "(sp)";
+      int loca = stack_cnt * 4;
+      if (loca < 2048 && loca >= -2048) {
+        cout << "\tsw t0, " << loca << "(sp)\n";
+      } else {
+        cout << "\tli t1, " << loca << "\n";
+        cout << "\tadd t1, t1, sp\n";
+        cout << "\tsw t0, 0(t1)\n";
+      }
+
+      saveLocation(value, STACK, "", loca);
       stack_cnt++;
 
       break;
@@ -480,11 +636,18 @@ void Visit(const koopa_raw_binary_t& binary, const koopa_raw_value_t& value) {
       Search(binary.rhs);
 
       cout << "\tslt t0"
-           << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
-      cout << "\tsw t0, " << stack_cnt * 4 << "(sp)"
-           << "\n";
+           << ", " << lookup[binary.lhs]->reg_name << ", " << lookup[binary.rhs]->reg_name << "\n";
 
-      dic[value] = to_string(stack_cnt * 4) + "(sp)";
+      int loca = stack_cnt * 4;
+      if (loca < 2048 && loca >= -2048) {
+        cout << "\tsw t0, " << loca << "(sp)\n";
+      } else {
+        cout << "\tli t1, " << loca << "\n";
+        cout << "\tadd t1, t1, sp\n";
+        cout << "\tsw t0, 0(t1)\n";
+      }
+
+      saveLocation(value, STACK, "", loca);
       stack_cnt++;
 
       break;
@@ -498,14 +661,21 @@ void Visit(const koopa_raw_binary_t& binary, const koopa_raw_value_t& value) {
       Search(binary.rhs);
 
       cout << "\tslt t0"
-           << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
+           << ", " << lookup[binary.lhs]->reg_name << ", " << lookup[binary.rhs]->reg_name << "\n";
       cout << "\tseqz t0"
            << ", t0"
            << "\n";
-      cout << "\tsw t0, " << stack_cnt * 4 << "(sp)"
-           << "\n";
 
-      dic[value] = to_string(stack_cnt * 4) + "(sp)";
+      int loca = stack_cnt * 4;
+      if (loca < 2048 && loca >= -2048) {
+        cout << "\tsw t0, " << loca << "(sp)\n";
+      } else {
+        cout << "\tli t1, " << loca << "\n";
+        cout << "\tadd t1, t1, sp\n";
+        cout << "\tsw t0, 0(t1)\n";
+      }
+
+      saveLocation(value, STACK, "", loca);
       stack_cnt++;
 
       break;
@@ -519,13 +689,20 @@ void Visit(const koopa_raw_binary_t& binary, const koopa_raw_value_t& value) {
       Search(binary.rhs);
 
       cout << "\tsgt t0"
-           << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
+           << ", " << lookup[binary.lhs]->reg_name << ", " << lookup[binary.rhs]->reg_name << "\n";
       cout << "\tseqz t0, t0"
            << "\n";
-      cout << "\tsw t0, " << stack_cnt * 4 << "(sp)"
-           << "\n";
 
-      dic[value] = to_string(stack_cnt * 4) + "(sp)";
+      int loca = stack_cnt * 4;
+      if (loca < 2048 && loca >= -2048) {
+        cout << "\tsw t0, " << loca << "(sp)\n";
+      } else {
+        cout << "\tli t1, " << loca << "\n";
+        cout << "\tadd t1, t1, sp\n";
+        cout << "\tsw t0, 0(t1)\n";
+      }
+
+      saveLocation(value, STACK, "", loca);
       stack_cnt++;
 
       break;
@@ -539,11 +716,18 @@ void Visit(const koopa_raw_binary_t& binary, const koopa_raw_value_t& value) {
       Search(binary.rhs);
 
       cout << "\tadd t0"
-           << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
-      cout << "\tsw t0, " << stack_cnt * 4 << "(sp)"
-           << "\n";
+           << ", " << lookup[binary.lhs]->reg_name << ", " << lookup[binary.rhs]->reg_name << "\n";
 
-      dic[value] = to_string(stack_cnt * 4) + "(sp)";
+      int loca = stack_cnt * 4;
+      if (loca < 2048 && loca >= -2048) {
+        cout << "\tsw t0, " << loca << "(sp)\n";
+      } else {
+        cout << "\tli t1, " << loca << "\n";
+        cout << "\tadd t1, t1, sp\n";
+        cout << "\tsw t0, 0(t1)\n";
+      }
+
+      saveLocation(value, STACK, "", loca);
       stack_cnt++;
 
       break;
@@ -557,11 +741,18 @@ void Visit(const koopa_raw_binary_t& binary, const koopa_raw_value_t& value) {
       Search(binary.rhs);
 
       cout << "\tsub t0"
-           << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
-      cout << "\tsw t0, " << stack_cnt * 4 << "(sp)"
-           << "\n";
+           << ", " << lookup[binary.lhs]->reg_name << ", " << lookup[binary.rhs]->reg_name << "\n";
 
-      dic[value] = to_string(stack_cnt * 4) + "(sp)";
+      int loca = stack_cnt * 4;
+      if (loca < 2048 && loca >= -2048) {
+        cout << "\tsw t0, " << loca << "(sp)\n";
+      } else {
+        cout << "\tli t1, " << loca << "\n";
+        cout << "\tadd t1, t1, sp\n";
+        cout << "\tsw t0, 0(t1)\n";
+      }
+
+      saveLocation(value, STACK, "", loca);
       stack_cnt++;
 
       break;
@@ -575,11 +766,18 @@ void Visit(const koopa_raw_binary_t& binary, const koopa_raw_value_t& value) {
       Search(binary.rhs);
 
       cout << "\tmul t0"
-           << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
-      cout << "\tsw t0, " << stack_cnt * 4 << "(sp)"
-           << "\n";
+           << ", " << lookup[binary.lhs]->reg_name << ", " << lookup[binary.rhs]->reg_name << "\n";
 
-      dic[value] = to_string(stack_cnt * 4) + "(sp)";
+      int loca = stack_cnt * 4;
+      if (loca < 2048 && loca >= -2048) {
+        cout << "\tsw t0, " << loca << "(sp)\n";
+      } else {
+        cout << "\tli t1, " << loca << "\n";
+        cout << "\tadd t1, t1, sp\n";
+        cout << "\tsw t0, 0(t1)\n";
+      }
+
+      saveLocation(value, STACK, "", loca);
       stack_cnt++;
 
       break;
@@ -593,11 +791,18 @@ void Visit(const koopa_raw_binary_t& binary, const koopa_raw_value_t& value) {
       Search(binary.rhs);
 
       cout << "\tdiv t0"
-           << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
-      cout << "\tsw t0, " << stack_cnt * 4 << "(sp)"
-           << "\n";
+           << ", " << lookup[binary.lhs]->reg_name << ", " << lookup[binary.rhs]->reg_name << "\n";
 
-      dic[value] = to_string(stack_cnt * 4) + "(sp)";
+      int loca = stack_cnt * 4;
+      if (loca < 2048 && loca >= -2048) {
+        cout << "\tsw t0, " << loca << "(sp)\n";
+      } else {
+        cout << "\tli t1, " << loca << "\n";
+        cout << "\tadd t1, t1, sp\n";
+        cout << "\tsw t0, 0(t1)\n";
+      }
+
+      saveLocation(value, STACK, "", loca);
       stack_cnt++;
 
       break;
@@ -611,11 +816,18 @@ void Visit(const koopa_raw_binary_t& binary, const koopa_raw_value_t& value) {
       Search(binary.rhs);
 
       cout << "\trem t0"
-           << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
-      cout << "\tsw t0, " << stack_cnt * 4 << "(sp)"
-           << "\n";
+           << ", " << lookup[binary.lhs]->reg_name << ", " << lookup[binary.rhs]->reg_name << "\n";
 
-      dic[value] = to_string(stack_cnt * 4) + "(sp)";
+      int loca = stack_cnt * 4;
+      if (loca < 2048 && loca >= -2048) {
+        cout << "\tsw t0, " << loca << "(sp)\n";
+      } else {
+        cout << "\tli t1, " << loca << "\n";
+        cout << "\tadd t1, t1, sp\n";
+        cout << "\tsw t0, 0(t1)\n";
+      }
+
+      saveLocation(value, STACK, "", loca);
       stack_cnt++;
 
       break;
@@ -633,32 +845,38 @@ void Visit(const koopa_raw_binary_t& binary, const koopa_raw_value_t& value) {
         Visit(binary.lhs->kind.data.integer);
         cout << "\n";
 
-        dic[binary.lhs] = "t" + to_string(reg_cnt);
+        saveLocation(binary.lhs, REGISTER, "t" + to_string(reg_cnt), 0);
         reg_cnt++;
 
         cout << "\tandi t0"
-             << ", " << dic[binary.lhs] << ", ";
+             << ", " << lookup[binary.lhs]->reg_name << ", ";
         Visit(binary.lhs->kind.data.integer);
         cout << "\n";
       } else if (int_l && !int_r) {
         cout << "\tandi t0"
-             << ", " << dic[binary.rhs] << ", ";
+             << ", " << lookup[binary.rhs]->reg_name << ", ";
         Visit(binary.lhs->kind.data.integer);
         cout << "\n";
       } else if (!int_l && int_r) {
         cout << "\tandi t0"
-             << ", " << dic[binary.lhs] << ", ";
+             << ", " << lookup[binary.lhs]->reg_name << ", ";
         Visit(binary.rhs->kind.data.integer);
         cout << "\n";
       } else {
         cout << "\tand t0"
-             << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
+             << ", " << lookup[binary.lhs]->reg_name << ", " << lookup[binary.rhs]->reg_name << "\n";
       }
 
-      cout << "\tsw t0, " << stack_cnt * 4 << "(sp)"
-           << "\n";
+      int loca = stack_cnt * 4;
+      if (loca < 2048 && loca >= -2048) {
+        cout << "\tsw t0, " << loca << "(sp)\n";
+      } else {
+        cout << "\tli t1, " << loca << "\n";
+        cout << "\tadd t1, t1, sp\n";
+        cout << "\tsw t0, 0(t1)\n";
+      }
 
-      dic[value] = to_string(stack_cnt * 4) + "(sp)";
+      saveLocation(value, STACK, "", loca);
       stack_cnt++;
 
       break;
@@ -676,32 +894,38 @@ void Visit(const koopa_raw_binary_t& binary, const koopa_raw_value_t& value) {
         Visit(binary.lhs->kind.data.integer);
         cout << "\n";
 
-        dic[binary.lhs] = "t" + to_string(reg_cnt);
+        saveLocation(binary.lhs, REGISTER, "t" + to_string(reg_cnt), 0);
         reg_cnt++;
 
         cout << "\tori t0"
-             << ", " << dic[binary.lhs] << ", ";
+             << ", " << lookup[binary.lhs]->reg_name << ", ";
         Visit(binary.lhs->kind.data.integer);
         cout << "\n";
       } else if (int_l && !int_r) {
         cout << "\tori t0"
-             << ", " << dic[binary.rhs] << ", ";
+             << ", " << lookup[binary.rhs]->reg_name << ", ";
         Visit(binary.lhs->kind.data.integer);
         cout << "\n";
       } else if (!int_l && int_r) {
         cout << "\tori t0"
-             << ", " << dic[binary.lhs] << ", ";
+             << ", " << lookup[binary.lhs]->reg_name << ", ";
         Visit(binary.rhs->kind.data.integer);
         cout << "\n";
       } else {
         cout << "\tor t0"
-             << ", " << dic[binary.lhs] << ", " << dic[binary.rhs] << "\n";
+             << ", " << lookup[binary.lhs]->reg_name << ", " << lookup[binary.rhs]->reg_name << "\n";
       }
 
-      cout << "\tsw t0, " << stack_cnt * 4 << "(sp)"
-           << "\n";
+      int loca = stack_cnt * 4;
+      if (loca < 2048 && loca >= -2048) {
+        cout << "\tsw t0, " << loca << "(sp)\n";
+      } else {
+        cout << "\tli t1, " << loca << "\n";
+        cout << "\tadd t1, t1, sp\n";
+        cout << "\tsw t0, 0(t1)\n";
+      }
 
-      dic[value] = to_string(stack_cnt * 4) + "(sp)";
+      saveLocation(value, STACK, "", loca);
       stack_cnt++;
 
       break;
@@ -716,8 +940,18 @@ bool isNum(const koopa_raw_value_t value) {
   if (value->kind.tag == KOOPA_RVT_INTEGER) {
     return true;
   }
-  cout << "\tlw t" << reg_cnt << ", " << dic[value] << "\n";
-  dic[value] = "t" + to_string(reg_cnt);
+
+  int loca = lookup[value]->stack;
+  if (loca < 2048 && loca >= -2048) {
+    cout << "\tlw t" << reg_cnt << ", " << loca << "(sp)\n";
+  } else {
+    cout << "\tli t" << reg_cnt << ", " << loca << "\n";
+    cout << "\tadd t" << reg_cnt << ", t" << reg_cnt << ", sp\n";
+    reg_cnt++;
+    cout << "\tlw t" << reg_cnt << ", 0(t" << reg_cnt - 1 << ")\n";
+  }
+
+  saveLocation(value, REGISTER, "t" + to_string(reg_cnt), 0);
   reg_cnt++;
   return false;
 }
@@ -725,7 +959,7 @@ bool isNum(const koopa_raw_value_t value) {
 void Visit(const koopa_raw_branch_t& branch) {
   reg_cnt = 0;
   Search(branch.cond);
-  cout << "\tbnez " << dic[branch.cond] << ", " << branch.true_bb->name + 1 << "\n";
+  cout << "\tbnez " << lookup[branch.cond]->reg_name << ", " << branch.true_bb->name + 1 << "\n";
   cout << "\tj " << branch.false_bb->name + 1 << "\n";
 }
 
@@ -738,7 +972,14 @@ void Visit(const koopa_raw_call_t& call, const koopa_raw_value_t& value) {
     if (reinterpret_cast<koopa_raw_value_t>(call.args.buffer[i])->kind.tag == KOOPA_RVT_INTEGER)
       cout << "\tli a" << i << ", " << reinterpret_cast<koopa_raw_value_t>(call.args.buffer[i])->kind.data.integer.value << "\n";
     else {
-      cout << "\tlw t0, " << dic[reinterpret_cast<koopa_raw_value_t>(call.args.buffer[i])] << "\n";
+      int loca = lookup[reinterpret_cast<koopa_raw_value_t>(call.args.buffer[i])]->stack;
+      if (loca < 2048 && loca >= -2048) {
+        cout << "\tlw t0, " << loca << "(sp)\n";
+      } else {
+        cout << "\tli t1, " << loca << "\n";
+        cout << "\tadd t1, t1, sp\n";
+        cout << "\tlw t0, 0(t1)\n";
+      }
       cout << "\tmv a" << i << ", t0\n";
     }
   }
@@ -750,8 +991,8 @@ void Visit(const koopa_raw_call_t& call, const koopa_raw_value_t& value) {
       cout << "\tsw t0"
            << ", " << (i - 8) * 4 << "(sp)\n";
     } else {
-      cout << "\tmv t0"
-           << ", " << dic[reinterpret_cast<koopa_raw_value_t>(call.args.buffer[i])] << "\n";
+      cout << "\tlw t0"
+           << ", " << lookup[reinterpret_cast<koopa_raw_value_t>(call.args.buffer[i])]->stack << "(sp)\n";
       cout << "\tsw t0"
            << ", " << (i - 8) * 4 << "(sp)\n";
     }
@@ -761,8 +1002,15 @@ void Visit(const koopa_raw_call_t& call, const koopa_raw_value_t& value) {
 
   // 根据ir是否保存返回值决定是否保存a0
   if (value->ty->tag != KOOPA_RTT_UNIT) {
-    cout << "\tsw a0, " << stack_cnt * 4 << "(sp)\n";
-    dic[value] = std::to_string(stack_cnt * 4) + "(sp)";
+    int loca = stack_cnt * 4;
+    if (loca < 2048 && loca >= -2048) {
+      cout << "\tsw a0, " << loca << "(sp)\n";
+    } else {
+      cout << "\tli t0, " << loca << "\n";
+      cout << "\tadd t0, t0, sp\n";
+      cout << "\tsw a0, 0(t0)\n";
+    }
+    saveLocation(value, STACK, "", loca);
     stack_cnt++;
   }
 }
@@ -774,21 +1022,39 @@ void Visit(const koopa_raw_return_t& ret) {
       Visit(ret.value->kind.data.integer);
       cout << "\n";
     } else if (ret.value->kind.tag == KOOPA_RVT_BINARY || ret.value->kind.tag == KOOPA_RVT_LOAD || ret.value->kind.tag == KOOPA_RVT_CALL) {
-      cout << "\tlw a0, " << dic[ret.value] << "\n";
+      int loca = lookup[ret.value]->stack;
+      if (loca < 2048 && loca >= -2048) {
+        cout << "\tlw a0, " << loca << "(sp)\n";
+      } else {
+        cout << "\tli t0, " << loca << "\n";
+        cout << "\tadd t0, t0, sp\n";
+        cout << "\tlw a0, 0(t0)\n";
+      }
     } else {
       cout << "\tERROR: Undefined Tag: " << ret.value->kind.tag << "\n";
     }
   }
 
-  if (has_call)
-    cout << "\tlw ra, " << stack_space - 4 << "(sp)\n";
+  // if (has_call)
+  //   cout << "\tlw ra, " << stack_space - 4 << "(sp)\n";
+
+  if (has_call) {
+    if (stack_space < 2052 && stack_space >= -2044) {
+      cout << "\tlw ra, " << stack_space - 4 << "(sp)\n";
+    } else {
+      cout << "\tli t0, " << stack_space - 4 << "\n";
+      cout << "\tadd t0, t0, sp\n";
+      cout << "\tlw ra, 0(t0)\n";
+    }
+  }
 
   if (stack_space != 0) {
     if (stack_space < 2048 && stack_space >= -2048) {
       cout << "\taddi sp, sp, " << stack_space << "\n";
     } else {
       cout << "\tli t0, " << stack_space << "\n";
-      cout << "\tadd sp, sp, t0" << "\n";
+      cout << "\tadd sp, sp, t0"
+           << "\n";
     }
   }
   cout << "\tret\n\n";
