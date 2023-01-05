@@ -5,6 +5,11 @@
 
 using namespace std;
 
+typedef enum {
+
+}
+
+
 unordered_map<koopa_raw_value_t, string> dic;
 // 记录函数所用栈空间
 int stack_space = 0;
@@ -107,11 +112,24 @@ void Visit(const koopa_raw_function_t& func) {
 
   // 更新栈所需空间
   stack_space = (var_cnt + has_call + call_cnt) * 4;
-  if (stack_space != 0)
-    cout << "\taddi sp, sp, " << -stack_space << "\n";
+  if (stack_space != 0) {
+    if (stack_space <= 2048 && stack_space > -2048) {
+      cout << "\taddi sp, sp, " << -stack_space << "\n";
+    } else {
+      cout << "\tli t0, " << -stack_space << "\n";
+      cout << "\tadd sp, sp, t0" << "\n";
+    }
+  }
 
-  if (has_call)
-    cout << "\tsw ra, " << stack_space - 4 << "(sp)\n";
+  if (has_call) {
+    if (stack_space < 2052 && stack_space >= -2044) {
+      cout << "\tsw ra, " << stack_space - 4 << "(sp)\n";
+    } else {
+      cout << "\tli t0, " << stack_space - 4 << "\n";
+      cout << "\tsw ra, t0(sp)\n";
+    }
+  }
+    // cout << "\tsw ra, " << stack_space - 4 << "(sp)\n";
 
   // 访问所有基本块
   Visit(func->bbs);
@@ -322,6 +340,39 @@ void Visit(const koopa_raw_store_t& store) {
 
 void Visit(const koopa_raw_integer_t& integer) {
   cout << integer.value;
+}
+
+void Visit(const koopa_raw_get_ptr_t& target, const koopa_raw_value_t& value) {
+  reg_cnt = 0;
+  if (target.src->kind.tag == KOOPA_RVT_GLOBAL_ALLOC) {
+    string src_s = dic[target.src];
+    cout << "\tla t0, " << src_s << "\n";
+    cout << "\tli t1, " << target.index->kind.data.integer.value << "\n";
+    cout << "\tli t2, 4"
+         << "\n";
+    cout << "\tmul t1, t1, t2"
+         << "\n";
+    cout << "\tadd t0, t0, t1"
+         << "\n";
+    string label = to_string(stack_cnt * 4) + "(sp)";
+    stack_cnt++;
+    cout << "\tsw t0, " << label << "\n";
+    dic[value] = label;
+  } else {
+    string src_s = dic[target.src];
+    cout << "\taddi t0, sp, " << src_s.substr(0, src_s.size() - 4) << "\n";
+    cout << "\tli t1, " << target.index->kind.data.integer.value << "\n";
+    cout << "\tli t2, 4"
+         << "\n";
+    cout << "\tmul t1, t1, t2"
+         << "\n";
+    cout << "\tadd t0, t0, t1"
+         << "\n";
+    string label = to_string(stack_cnt * 4) + "(sp)";
+    stack_cnt++;
+    cout << "\tsw t0, " << label << "\n";
+    dic[value] = label;
+  }
 }
 
 void Visit(const koopa_raw_get_elem_ptr_t& target, const koopa_raw_value_t& value) {
@@ -732,7 +783,13 @@ void Visit(const koopa_raw_return_t& ret) {
   if (has_call)
     cout << "\tlw ra, " << stack_space - 4 << "(sp)\n";
 
-  if (stack_space != 0)
-    cout << "\taddi sp, sp, " << stack_space << "\n";
+  if (stack_space != 0) {
+    if (stack_space < 2048 && stack_space >= -2048) {
+      cout << "\taddi sp, sp, " << stack_space << "\n";
+    } else {
+      cout << "\tli t0, " << stack_space << "\n";
+      cout << "\tadd sp, sp, t0" << "\n";
+    }
+  }
   cout << "\tret\n\n";
 }
