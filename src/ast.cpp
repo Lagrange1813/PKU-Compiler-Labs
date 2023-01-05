@@ -109,6 +109,7 @@ std::tuple<value_type, int, int, func_type> fetchSymbol(const std::string& key) 
 }
 
 int search(const ConstExpAST* constExp);
+int search(const InitValAST* initVal);
 int search(const ExpAST* exp);
 int search(const LOrExpAST* lOrExp);
 int search(const LOrExpWithOpAST* lOrExp);
@@ -815,11 +816,17 @@ std::vector<std::pair<bool, int>> InitValWithListAST::prepare(std::vector<int>& 
   for (auto& initVal : initValList) {
     auto targetInitVal = initVal.get();
     if (typeid(*targetInitVal) == typeid(InitValAST)) {
-      auto result = ((InitValAST*)initVal.get())->Output();
-      if (result.first)
-        vec.push_back(result);
-      else
-        vec.push_back(std::make_pair(false, cnt - 1));
+      if (is_global_area) {
+        int result = search((InitValAST*)initVal.get());
+        vec.push_back(std::make_pair(true, result));
+      } else {
+        auto result = ((InitValAST*)initVal.get())->Output();
+        if (result.first)
+          vec.push_back(result);
+        else
+          vec.push_back(std::make_pair(false, cnt - 1));
+      }
+
       num_cnt++;
     } else if (typeid(*targetInitVal) == typeid(InitValWithListAST)) {
       if (vec.size() % lastSize)
@@ -1459,14 +1466,23 @@ int LValAST::getLocation() const {
     ret = cnt - 1;
 
   } else {
-    str += "\t%";
-    str += std::to_string(cnt);
-    cnt++;
-    str += " = getelemptr @";
-    str += ident;
-    str += "_";
-    str += std::to_string(std::get<2>(result));
-    str += ", 0\n";
+    if (std::get<0>(result) == POINTER) {
+      str += "\t%" + std::to_string(cnt) + " = load @";
+      cnt++;
+      str += ident;
+      str += "_";
+      str += std::to_string(std::get<2>(result));
+      str += "\n";
+    } else {
+      str += "\t%";
+      str += std::to_string(cnt);
+      cnt++;
+      str += " = getelemptr @";
+      str += ident;
+      str += "_";
+      str += std::to_string(std::get<2>(result));
+      str += ", 0\n";
+    }
     ret = cnt - 1;
   }
   return ret;
@@ -1490,7 +1506,16 @@ std::pair<bool, int> LValAST::Output() const {
       str += "\n";
 
     } else {
-      this->getLocation();
+      int location = this->getLocation();
+
+      if (arrayExpList.size() != 0) {
+        str += "\t%";
+        str += std::to_string(cnt);
+        cnt++;
+        str += " = getelemptr %";
+        str += std::to_string(location);
+        str += ", 0\n";
+      }
     }
 
   } else {
@@ -2265,6 +2290,10 @@ std::pair<bool, int> ConstExpAST::Output() const {
 
 int search(const ConstExpAST* constExp) {
   return search((ExpAST*)constExp->exp.get());
+}
+
+int search(const InitValAST* initVal) {
+  return search((ExpAST*)initVal->exp.get());
 }
 
 int search(const ExpAST* exp) {
