@@ -277,7 +277,18 @@ void Search(const koopa_raw_value_t value) {
       
       saveLocation(value, REGISTER, "t0", 0);
     }
-  }
+  } 
+  // else if (value->kind.tag == KOOPA_RVT_GET_ELEM_PTR || value->kind.tag == KOOPA_RVT_GET_PTR) {
+  //   int loca = lookup[value]->stack;
+  //   if (loca < 2048 && loca >= -2048) {
+  //     cout << "\tlw t" << reg_cnt << ", " << loca << "(sp)\n";
+  //   } else {
+  //     cout << "\tli t1, " << loca << "\n";
+  //     cout << "\tadd t1, t1, sp\n";
+  //     cout << "\tlw t0, 0(t1)\n";
+  //   }
+  //   saveLocation(value, REGISTER, "t" + to_string(reg_cnt), 0);
+  // }
 }
 
 void Visit(const koopa_raw_global_alloc_t& global, const koopa_raw_value_t& value) {
@@ -528,7 +539,33 @@ void Visit(const koopa_raw_get_ptr_t& target, const koopa_raw_value_t& value) {
       cout << "\tsw t0, 0(t1)\n";
     }
     saveLocation(value, STACK, "", size);
+  } else if (target.src->kind.tag == KOOPA_RVT_GET_ELEM_PTR || target.src->kind.tag == KOOPA_RVT_GET_PTR) {
+    int size = lookup[target.src]->stack;
+    if (size < 2048 && size >= -2048) {
+      cout << "\tlw t0, " << size << "(sp)\n";
+    } else {
+      cout << "\tli t1, " << size << "\n";
+      cout << "\tadd t0, sp, t1\n";
+      cout << "\tlw t0, 0(t0)\n";
+    }
+    cout << "\tadd t0, sp, t0\n";
+    reg_cnt++;
+    Search(target.index);
+    cout << "\tli t2, 4\n";
+    cout << "\tmul t1, t2, " << lookup[target.index]->reg_name << "\n";
+    cout << "\tadd t0, t0, t1\n";
+    int loca = stack_cnt * 4;
+    stack_cnt++;
+    if (loca < 2048 && loca >= -2048) {
+      cout << "\tsw t0, " << loca << "(sp)\n";
+    } else {
+      cout << "\tli t1, " << loca << "\n";
+      cout << "\tadd t1, t1, sp\n";
+      cout << "\tsw t0, 0(t1)\n";
+    }
+    saveLocation(value, STACK, "", loca);
   } else {
+    // alloc
     int size = lookup[target.src]->stack;
     if (size < 2048 && size >= -2048) {
       cout << "\taddi t0, sp, " << size << "\n";
@@ -574,7 +611,33 @@ void Visit(const koopa_raw_get_elem_ptr_t& target, const koopa_raw_value_t& valu
       cout << "\tsw t0, 0(t1)\n";
     }
     saveLocation(value, STACK, "", size);
+  } else if (target.src->kind.tag == KOOPA_RVT_GET_ELEM_PTR || target.src->kind.tag == KOOPA_RVT_GET_PTR) {
+    int size = lookup[target.src]->stack;
+    if (size < 2048 && size >= -2048) {
+      cout << "\tlw t0, " << size << "(sp)\n";
+    } else {
+      cout << "\tli t1, " << size << "\n";
+      cout << "\tadd t0, sp, t1\n";
+      cout << "\tlw t0, 0(t0)\n";
+    }
+    cout << "\tadd t0, sp, t0\n";
+    reg_cnt++;
+    Search(target.index);
+    cout << "\tli t2, 4\n";
+    cout << "\tmul t1, t2, " << lookup[target.index]->reg_name << "\n";
+    cout << "\tadd t0, t0, t1\n";
+    int loca = stack_cnt * 4;
+    stack_cnt++;
+    if (loca < 2048 && loca >= -2048) {
+      cout << "\tsw t0, " << loca << "(sp)\n";
+    } else {
+      cout << "\tli t1, " << loca << "\n";
+      cout << "\tadd t1, t1, sp\n";
+      cout << "\tsw t0, 0(t1)\n";
+    }
+    saveLocation(value, STACK, "", loca);
   } else {
+    // alloc
     int size = lookup[target.src]->stack;
     if (size < 2048 && size >= -2048) {
       cout << "\taddi t0, sp, " << size << "\n";
